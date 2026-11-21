@@ -171,5 +171,5 @@ python3 tests/integration/test-server.py start /tmp/jf-test /tmp/usb-test
 
 ## Licence
 
-JellyUSB est distribué sous licence **GNU GPL v3** (voir [LICENSE](LICENSE)), comme Jellyfin et le
-modèle officiel de plugin.
+JellyUSB est distribué sous licence **GNU GPL v3** (voir [LICENSE](LICENSE)), comme le modèle
+officiel de plugin Jellyfin (Jellyfin lui-même est sous GPL v2).

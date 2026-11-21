@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.4.0.0",
+        "changelog": "Vue « MediaID » dans le menu des vues des bibliothèques de films : une ligne par support USB avec son image de fond, une page par support avec tous ses films, et retour vers la liste. Correctif : la conversion des NFO Windows-1252 utilise le dossier cache du plugin (la tâche de réparation pouvait ne rien réparer si /tmp/jellyfin appartenait à un autre utilisateur).",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.4.0.0/jellyusb_1.4.0.0.zip",
+        "checksum": "f58ca5eb24500a17ce4f6639fe92d7f1",
+        "timestamp": "2026-11-21T23:35:53Z"
+      },
+      {
         "version": "1.3.0.0",
         "changelog": "Interface web : une seule fenêtre « Support absent » (la fenêtre générique « Erreur de lecture » est fermée). Tâches planifiées : panneau « En cours d'exécution » et état de chaque support USB (libre, occupé et par quoi, absent). Réparation des accents mot par mot pour les derniers titres.",
         "targetAbi": "12.4.0.0",

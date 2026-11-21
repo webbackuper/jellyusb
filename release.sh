@@ -23,7 +23,7 @@ GH="$(command -v gh || echo "$HOME/.local/bin/gh")"
 [ -z "$(git status --porcelain)" ] || { echo "des modifications ne sont pas commitées" >&2; exit 1; }
 
 echo "==> Version $VERSION"
-sed -i -E "s|<(Version|AssemblyVersion|FileVersion)>[^<]*<|<\1>$VERSION<|g" Directory.Build.props
+sed -i -E "s#<(Version|AssemblyVersion|FileVersion)>[^<]*<#<\1>$VERSION<#g" Directory.Build.props
 sed -i -E "s|^version: \".*\"|version: \"$VERSION\"|" build.yaml
 
 echo "==> Compilation et tests"

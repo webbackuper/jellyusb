@@ -103,6 +103,16 @@
 
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
+                                <input id="UseOnlineTitlesForRepair" type="checkbox" is="emby-checkbox" />
+                                <span>Compléter les titres illisibles depuis TheMovieDb</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">
+                                Quand ni le NFO ni le titre original ne donnent la lettre manquante, la tâche demande le titre à TheMovieDb (par identifiant). Les « � » ne sont remplacés que si le titre trouvé correspond partout ailleurs.
+                            </div>
+                        </div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
                                 <input id="RepairAfterLibraryScan" type="checkbox" is="emby-checkbox" />
                                 <span>Lancer « Réparer les titres mal encodés » après chaque scan de la médiathèque</span>
                             </label>
@@ -123,7 +133,7 @@
                 var pluginId = '9f8d8889-7b20-47d5-ad9a-37807e42e4ce';
                 var page = document.querySelector('#JellyUsbConfigPage');
                 var texts = ['BasePath', 'MissingMediaHeader', 'MissingMediaText', 'MissingFileHeader', 'MissingFileText', 'ShortMissingMediaText', 'ShortMissingFileText', 'WebDisplayMode'];
-                var checks = ['EnablePlaybackCheck', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'RepairAfterLibraryScan'];
+                var checks = ['EnablePlaybackCheck', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
 
                 page.addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();

@@ -10,7 +10,7 @@
 # Tableau de bord > Tâches planifiées > JellyUSB, une fois les supports concernés branchés.
 set -euo pipefail
 
-VERSION="1.0.0.0"
+VERSION="$(sed -n "s:.*<Version>\(.*\)</Version>.*:\1:p" "$(cd "$(dirname "$0")" && pwd)/Directory.Build.props")"
 GUID="9f8d8889-7b20-47d5-ad9a-37807e42e4ce"
 DATA_DIR="${JELLYFIN_DATA_DIR:-/var/lib/jellyfin}"
 PLUGINS_DIR="$DATA_DIR/plugins"
@@ -83,7 +83,7 @@ install -o jellyfin -g jellyfin -m 644 "$DLL" "$DEST/"
 cat > "$DEST/meta.json" <<EOF
 {
   "category": "General",
-  "changelog": "1.0.0.0 : première version.",
+  "changelog": "Voir https://github.com/webbackuper/jellyusb/releases",
   "description": "Vérifie la présence du support USB (MediaID) avant la lecture et répare les caractères accentués.",
   "guid": "$GUID",
   "name": "JellyUSB",

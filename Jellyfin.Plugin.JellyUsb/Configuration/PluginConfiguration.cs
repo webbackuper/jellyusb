@@ -71,6 +71,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether text is repaired when items are added or refreshed.</summary>
     public bool EnableImportRepair { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether the repair task may ask TheMovieDb (by id) for the title
+    /// when neither the NFO nor the original title give the missing letters.
+    /// </summary>
+    public bool UseOnlineTitlesForRepair { get; set; } = true;
+
     /// <summary>Gets or sets a value indicating whether the repair task runs after each library scan.</summary>
     public bool RepairAfterLibraryScan { get; set; } = true;
 

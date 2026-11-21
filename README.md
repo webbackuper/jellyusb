@@ -108,6 +108,7 @@ bibliothèque de Jellyfin 12.4 (« Analyser la médiathèque : échec »).
 | Délais web / Android TV | 800 / 300 ms | Pour que notre message arrive après la fenêtre ou le toast d'erreur de l'application |
 | Lire les NFO non UTF‑8 en Windows‑1252 | oui | Lecteur « JellyUSB NFO », placé automatiquement avant « Nfo » |
 | Réparer les textes à l'import | oui | Titres, titre original, résumé, slogan, genres, studios, tags, chapitres, pistes |
+| Compléter depuis TheMovieDb | oui | Si ni le NFO ni le titre original ne donnent la lettre, la tâche demande le titre à TheMovieDb (par identifiant) et ne comble les « � » que s'il correspond partout ailleurs |
 | Réparer après chaque scan | oui | Actif seulement après un premier lancement manuel de la tâche |
 
 ## Caractères accentués
@@ -119,7 +120,8 @@ bibliothèque de Jellyfin 12.4 (« Analyser la médiathèque : échec »).
   - à l'import, le lecteur « JellyUSB NFO » détecte un fichier qui n'est pas en UTF‑8 valide, le
     convertit en mémoire et le fait lire par l'analyseur NFO de Jellyfin lui-même ;
   - pour l'existant, la tâche relit le NFO quand le support est branché ; sinon, elle reprend les
-    lettres du titre original quand il correspond au titre aux accents près ;
+    lettres du titre original, ou à défaut du titre TheMovieDb, quand il correspond au titre aux
+    accents près ;
   - les textes doublement encodés (« Ã© », par exemple dans les chapitres des MKV) sont réparés en
     base.
 

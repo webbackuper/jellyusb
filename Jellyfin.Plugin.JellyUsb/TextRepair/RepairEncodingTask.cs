@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
@@ -28,19 +29,22 @@ public class RepairEncodingTask : IScheduledTask
     private readonly ItemTextRepairer _repairer;
     private readonly MediaPresenceChecker _checker;
     private readonly IServiceProvider _services;
+    private readonly IProviderManager _providerManager;
 
     public RepairEncodingTask(
         ILogger<RepairEncodingTask> logger,
         ILibraryManager libraryManager,
         ItemTextRepairer repairer,
         MediaPresenceChecker checker,
-        IServiceProvider services)
+        IServiceProvider services,
+        IProviderManager providerManager)
     {
         _logger = logger;
         _libraryManager = libraryManager;
         _repairer = repairer;
         _checker = checker;
         _services = services;
+        _providerManager = providerManager;
     }
 
     /// <inheritdoc />
@@ -75,7 +79,7 @@ public class RepairEncodingTask : IScheduledTask
         var episodeNfo = ActivatorUtilities.CreateInstance<LegacyEpisodeNfoProvider>(_services);
         var directoryService = _services.GetRequiredService<IDirectoryService>();
 
-        int repaired = 0, fromNfo = 0, waitingForMedia = 0, unresolved = 0;
+        int repaired = 0, fromNfo = 0, fromOnline = 0, waitingForMedia = 0, unresolved = 0;
         for (var i = 0; i < items.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -101,6 +105,26 @@ public class RepairEncodingTask : IScheduledTask
                     }
                 }
 
+                // Title still broken and the original title does not give the letters: ask the online
+                // provider (TheMovieDb, by id) for the title in the library language, and only fill the
+                // replacement characters when it matches everywhere else.
+                if (config.UseOnlineTitlesForRepair
+                    && item is Movie movie
+                    && Mojibake.HasReplacementChar(movie.Name)
+                    && Mojibake.FillReplacementChars(movie.Name, [movie.OriginalTitle, movie.ForcedSortName]) is null)
+                {
+                    var online = await GetOnlineTitlesAsync(movie, cancellationToken).ConfigureAwait(false);
+                    var filled = Mojibake.FillReplacementChars(movie.Name, online);
+                    if (filled is not null)
+                    {
+                        _logger.LogInformation("JellyUSB: titre réparé depuis TheMovieDb : \"{Old}\" -> \"{New}\"", movie.Name, filled);
+                        movie.Name = filled;
+                        await ItemTextRepairer.SaveAsync(movie, cancellationToken).ConfigureAwait(false);
+                        fromOnline++;
+                        copied++;
+                    }
+                }
+
                 var outcome = await _repairer.RepairAsync(item, cancellationToken).ConfigureAwait(false);
                 if (outcome.AnyChange || copied > 0)
                 {
@@ -121,10 +145,11 @@ public class RepairEncodingTask : IScheduledTask
         }
 
         _logger.LogInformation(
-            "JellyUSB: réparation terminée. {Repaired} élément(s) réparé(s) dont {FromNfo} relu(s) depuis le NFO ; "
-            + "{Unresolved} encore illisible(s) dont {Waiting} dont le support n'est pas branché.",
+            "JellyUSB: réparation terminée. {Repaired} élément(s) réparé(s) dont {FromNfo} relu(s) depuis le NFO "
+            + "et {FromOnline} depuis TheMovieDb ; {Unresolved} encore illisible(s) dont {Waiting} dont le support n'est pas branché.",
             repaired,
             fromNfo,
+            fromOnline,
             unresolved,
             waitingForMedia);
 
@@ -132,6 +157,34 @@ public class RepairEncodingTask : IScheduledTask
         {
             plugin.Configuration.RepairTaskRanOnce = true;
             plugin.SaveConfiguration();
+        }
+    }
+
+    private async Task<IReadOnlyList<string?>> GetOnlineTitlesAsync(Movie movie, CancellationToken cancellationToken)
+    {
+        if (!movie.ProviderIds.ContainsKey("Tmdb") && !movie.ProviderIds.ContainsKey("Imdb"))
+        {
+            return [];
+        }
+
+        try
+        {
+            var lookup = movie.GetLookupInfo();
+            var results = await _providerManager.GetRemoteSearchResults<Movie, MovieInfo>(
+                new RemoteSearchQuery<MovieInfo>
+                {
+                    SearchInfo = lookup,
+                    ItemId = movie.Id,
+                    SearchProviderName = "TheMovieDb",
+                    IncludeDisabledProviders = true
+                },
+                cancellationToken).ConfigureAwait(false);
+            return results.Select(r => r.Name).ToList();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "JellyUSB: TheMovieDb lookup failed for {Name}", movie.Name);
+            return [];
         }
     }
 

@@ -3,10 +3,12 @@
  *    "Playback error" dialog that jellyfin-web always shows when a playback is refused.
  * 2. On Dashboard > Scheduled Tasks, show the running tasks at the top, with what keeps each USB
  *    medium busy (so you know why a drive cannot be unmounted).
+ * 3. In a movie library, add a "MediaID" view to the view menu (top left): one row per USB medium,
+ *    each with its background; a click on a medium shows all its movies, with a way back.
  */
 (function () {
     'use strict';
-    var SETTINGS = /*JELLYUSB_SETTINGS*/null || { headers: ['Support absent', 'Fichier introuvable'], closeGenericDialog: true, tasksPanel: true };
+    var SETTINGS = /*JELLYUSB_SETTINGS*/null || { headers: ['Support absent', 'Fichier introuvable'], closeGenericDialog: true, tasksPanel: true, mediaView: true, mediaViewName: 'MediaID' };
     var OURS = SETTINGS.headers.filter(Boolean).map(function (h) { return h.trim(); });
     var WINDOW_MS = 6000;
 
@@ -174,4 +176,317 @@
         setInterval(ensurePanel, 700);
         window.addEventListener('hashchange', ensurePanel);
     }
+
+    /* ---------- 3. MediaID view of a movie library ---------- */
+    var VIEW_ID = 'jellyusbMediaView';
+    var ROW_ITEMS = 24;
+    var PAGE_ITEMS = 100;
+    var mediaCache = {};       // libraryId -> { at, list } (or a pending promise)
+    var currentKey = null;     // what the view shows now
+
+    function hashParams() {
+        var h = location.hash || '';
+        var q = h.indexOf('?');
+        return { route: q < 0 ? h : h.slice(0, q), params: new URLSearchParams(q < 0 ? '' : h.slice(q + 1)) };
+    }
+
+    function libraryId() {
+        var p = hashParams();
+        return p.route === '#/movies' ? p.params.get('topParentId') : null;
+    }
+
+    function viewHash(mediaId) {
+        var p = hashParams();
+        p.params.set('jellyusb', 'media');
+        if (mediaId) { p.params.set('mediaId', mediaId); } else { p.params.delete('mediaId'); }
+        return p.route + '?' + p.params.toString();
+    }
+
+    function leaveHash() {
+        var p = hashParams();
+        p.params.delete('jellyusb');
+        p.params.delete('mediaId');
+        return p.route + '?' + p.params.toString();
+    }
+
+    function getMedia(lib, fresh) {
+        var c = mediaCache[lib];
+        if (c && c.list && !fresh && Date.now() - c.at < 60000) { return Promise.resolve(c.list); }
+        if (c && c.pending) { return c.pending; }
+        var pending = window.ApiClient.getJSON(window.ApiClient.getUrl('JellyUsb/Libraries/' + lib + '/Media')).then(function (list) {
+            mediaCache[lib] = { at: Date.now(), list: list || [] };
+            return mediaCache[lib].list;
+        }, function () {
+            mediaCache[lib] = { at: Date.now(), list: [] };
+            return [];
+        });
+        mediaCache[lib] = { pending: pending, list: c && c.list, at: c ? c.at : 0 };
+        return pending;
+    }
+
+    function getItems(lib, mediaId, start, limit, sortBy) {
+        return window.ApiClient.getJSON(window.ApiClient.getUrl('JellyUsb/Libraries/' + lib + '/Media/' + encodeURIComponent(mediaId) + '/Items',
+            { startIndex: start, limit: limit, sortBy: sortBy || 'SortName' }));
+    }
+
+    function backgroundUrl(mediaId) {
+        return window.ApiClient.getUrl('JellyUsb/Media/' + encodeURIComponent(mediaId) + '/Background');
+    }
+
+    function addStyle() {
+        if (document.getElementById('jellyusbMediaStyle')) { return; }
+        var st = document.createElement('style');
+        st.id = 'jellyusbMediaStyle';
+        st.textContent = ''
+            + '#' + VIEW_ID + '{padding:1em 0 3em}'
+            + '.jusb-row{margin-bottom:1.6em}'
+            + '.jusb-rowhead{display:flex;align-items:baseline;gap:.6em;padding:0 3.3%;margin:0 0 .5em;color:inherit;text-decoration:none}'
+            + '.jusb-rowhead h2{margin:0}.jusb-rowhead:hover h2{text-decoration:underline}'
+            + '.jusb-meta{opacity:.7;font-size:.95em}'
+            + '.jusb-dot{display:inline-block;width:.6em;height:.6em;border-radius:50%;margin-right:.35em}'
+            + '.jusb-scroller{display:flex;gap:.9em;overflow-x:auto;padding:0 3.3% .6em;scroll-padding:0 3.3%;scroll-snap-type:x proximity}'
+            + '.jusb-card{flex:0 0 auto;width:9.5em;color:inherit;text-decoration:none;scroll-snap-align:start}'
+            + '.jusb-poster{width:100%;aspect-ratio:2/3;border-radius:.3em;background:#222 center/cover no-repeat;display:block;object-fit:cover}'
+            + '.jusb-title{margin-top:.35em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}'
+            + '.jusb-year{opacity:.6;font-size:.85em;text-align:center}'
+            + '.jusb-fond{flex:0 0 auto;width:23.75em;aspect-ratio:16/9;border-radius:.4em;overflow:hidden;position:relative;display:block;scroll-snap-align:start}'
+            + '.jusb-fond img{width:100%;height:100%;display:block}'
+            + '.jusb-badge{position:absolute;top:.6em;right:.6em;background:rgba(0,0,0,.6);color:#fff;border-radius:1em;padding:.15em .7em;font-size:.85em}'
+            + '.jusb-more{flex:0 0 auto;width:9.5em;aspect-ratio:2/3;border-radius:.3em;display:flex;align-items:center;justify-content:center;'
+            + 'background:rgba(128,128,128,.18);color:inherit;text-decoration:none;text-align:center;padding:.5em;box-sizing:border-box}'
+            + '.jusb-absent .jusb-poster{opacity:.55}'
+            + '.jusb-head{padding:0 3.3%;margin-bottom:1.4em}'
+            + '.jusb-back{display:inline-block;background:rgba(128,128,128,.22);color:inherit;border-radius:2em;padding:.4em 1.1em;'
+            + 'margin-bottom:.9em;text-decoration:none}'
+            + '.jusb-back:hover{background:rgba(128,128,128,.4)}'
+            + '.jusb-headbody{display:flex;gap:1.4em;align-items:center;flex-wrap:wrap}'
+            + '.jusb-headimg{height:10em;aspect-ratio:16/9;border-radius:.4em;display:block}'
+            + '.jusb-headbody h1{margin:0 0 .2em}'
+            + '.jusb-grid{display:flex;flex-wrap:wrap;gap:1.2em .9em;padding:0 3.3%}'
+            + '.jusb-note{padding:0 3.3%;opacity:.7}'
+            + '@media (max-width:600px){.jusb-card,.jusb-more{width:7.2em}.jusb-fond{width:17em}.jusb-headimg{height:7em}}';
+        document.head.appendChild(st);
+    }
+
+    function stateText(m) {
+        return m.Present
+            ? '<span class="jusb-dot" style="background:#2ecc71"></span>branché'
+            : '<span class="jusb-dot" style="background:gray"></span>absent';
+    }
+
+    function filmCount(n) {
+        return n + (n > 1 ? ' films' : ' film');
+    }
+
+    function cardHtml(item) {
+        var serverId = window.ApiClient.serverId();
+        var img = item.ImageTags && item.ImageTags.Primary
+            ? window.ApiClient.getUrl('Items/' + item.Id + '/Images/Primary', { maxHeight: 360, tag: item.ImageTags.Primary, quality: 90 })
+            : '';
+        return '<a class="jusb-card" href="#/details?id=' + encodeURIComponent(item.Id) + '&serverId=' + encodeURIComponent(serverId) + '" title="' + esc(item.Name) + '">'
+            + (img ? '<img class="jusb-poster" loading="lazy" alt="" src="' + esc(img) + '">' : '<span class="jusb-poster"></span>')
+            + '<div class="jusb-title">' + esc(item.Name) + '</div>'
+            + '<div class="jusb-year">' + esc(item.ProductionYear || '') + '</div></a>';
+    }
+
+    function renderRows(view, lib, list) {
+        if (!list.length) {
+            view.innerHTML = '<p class="jusb-note">Aucun support USB dans cette bibliothèque.</p>';
+            return;
+        }
+        view.innerHTML = list.map(function (m, i) {
+            return '<div class="jusb-row' + (m.Present ? '' : ' jusb-absent') + '">'
+                + '<a class="jusb-rowhead" href="' + esc(viewHash(m.MediaId)) + '"><h2 class="sectionTitle sectionTitle-cards">' + esc(m.MediaId) + ' ›</h2>'
+                + '<span class="jusb-meta">' + filmCount(m.MovieCount) + ' · ' + stateText(m) + '</span></a>'
+                + '<div class="jusb-scroller" data-row="' + i + '">'
+                + '<a class="jusb-fond" href="' + esc(viewHash(m.MediaId)) + '" title="' + esc(m.MediaId) + '"><img alt="' + esc(m.MediaId) + '" src="' + esc(backgroundUrl(m.MediaId)) + '">'
+                + '<span class="jusb-badge">' + (m.Present ? 'branché' : 'absent') + '</span></a>'
+                + '</div></div>';
+        }).join('');
+        list.forEach(function (m, i) {
+            getItems(lib, m.MediaId, 0, ROW_ITEMS, 'DateCreated').then(function (r) {
+                var row = view.querySelector('.jusb-scroller[data-row="' + i + '"]');
+                if (!row) { return; }
+                var html = (r.Items || []).map(cardHtml).join('');
+                if (r.TotalRecordCount > (r.Items || []).length) {
+                    html += '<a class="jusb-more" href="' + esc(viewHash(m.MediaId)) + '">Voir les ' + filmCount(r.TotalRecordCount) + ' ›</a>';
+                }
+                row.insertAdjacentHTML('beforeend', html);
+            });
+        });
+    }
+
+    function renderMedium(view, lib, list, mediaId) {
+        var m = list.filter(function (x) { return x.MediaId === mediaId; })[0];
+        var back = '<a class="jusb-back" href="' + esc(viewHash(null)) + '">‹ ' + esc(SETTINGS.mediaViewName || 'MediaID') + '</a>';
+        if (!m) {
+            view.innerHTML = '<div class="jusb-head">' + back + '</div><p class="jusb-note">' + esc(mediaId) + ' n\'est pas dans cette bibliothèque.</p>';
+            return;
+        }
+        view.innerHTML = '<div class="jusb-head">' + back + '<div class="jusb-headbody">'
+            + '<img class="jusb-headimg" alt="' + esc(m.MediaId) + '" src="' + esc(backgroundUrl(m.MediaId)) + '">'
+            + '<div><h1>' + esc(m.MediaId) + '</h1><div class="jusb-meta">' + filmCount(m.MovieCount) + ' · ' + stateText(m)
+            + (m.Present ? '' : '<br>Branchez ce support pour lire ses films.') + '</div></div></div></div>'
+            + '<div class="jusb-grid' + (m.Present ? '' : ' jusb-absent') + '"></div><div class="jusb-sentinel" style="height:1px"></div>';
+        var grid = view.querySelector('.jusb-grid');
+        var sentinel = view.querySelector('.jusb-sentinel');
+        var next = 0, total = null, loading = false;
+        function more() {
+            if (loading || (total !== null && next >= total) || !document.body.contains(grid)) { return; }
+            loading = true;
+            getItems(lib, mediaId, next, PAGE_ITEMS, 'SortName').then(function (r) {
+                total = r.TotalRecordCount;
+                next += (r.Items || []).length;
+                grid.insertAdjacentHTML('beforeend', (r.Items || []).map(cardHtml).join(''));
+                loading = false;
+                if (!(r.Items || []).length) { total = next; }
+                if (sentinel.getBoundingClientRect().top < window.innerHeight + 600) { more(); }
+            }, function () { loading = false; });
+        }
+        if ('IntersectionObserver' in window) {
+            new IntersectionObserver(function (entries) {
+                if (entries.some(function (e) { return e.isIntersecting; })) { more(); }
+            }, { rootMargin: '600px' }).observe(sentinel);
+        }
+        more();
+    }
+
+    function visibleMoviesPage() {
+        var pages = document.querySelectorAll('#moviesPage');
+        for (var i = 0; i < pages.length; i++) {
+            if (!pages[i].classList.contains('hide') && pages[i].offsetParent !== null) { return pages[i]; }
+        }
+        return pages.length ? pages[pages.length - 1] : null;
+    }
+
+    function titleSpan() {
+        var b = document.querySelector('[aria-controls="library-view-menu"]');
+        return b ? b.querySelector('.MuiTypography-root') || b.firstChild : null;
+    }
+
+    function setTitle(on) {
+        var span = titleSpan();
+        if (!span) { return; }
+        if (on) {
+            if (span.getAttribute('data-jusb-title') === null) { span.setAttribute('data-jusb-title', span.textContent); }
+            if (span.textContent !== SETTINGS.mediaViewName) { span.textContent = SETTINGS.mediaViewName; }
+        } else if (span.getAttribute('data-jusb-title') !== null) {
+            // jellyfin-web may already have written the name of the view just chosen: keep it.
+            if (span.textContent === SETTINGS.mediaViewName) { span.textContent = span.getAttribute('data-jusb-title'); }
+            span.removeAttribute('data-jusb-title');
+        }
+    }
+
+    function hide(el) {
+        if (el && !el.hasAttribute('data-jusb-hidden')) { el.setAttribute('data-jusb-hidden', el.style.display || ''); el.style.display = 'none'; }
+    }
+
+    // The play, shuffle, filter and sort buttons of the header act on jellyfin-web's own view: hide them.
+    function hideToolbarExtras() {
+        var button = document.querySelector('[aria-controls="library-view-menu"]');
+        var toolbar = button && button.closest('.MuiToolbar-root');
+        for (var el = button; el && toolbar && el !== toolbar; el = el.parentElement) {
+            Array.prototype.forEach.call(el.parentElement.children, function (sib) {
+                if (sib !== el) { hide(sib); }
+            });
+        }
+    }
+
+    function exitView() {
+        var view = document.getElementById(VIEW_ID);
+        if (view) { view.remove(); }
+        Array.prototype.forEach.call(document.querySelectorAll('[data-jusb-hidden]'), function (c) {
+            c.style.display = c.getAttribute('data-jusb-hidden');
+            c.removeAttribute('data-jusb-hidden');
+        });
+        setTitle(false);
+        currentKey = null;
+    }
+
+    function ensureMediaView() {
+        var lib = libraryId();
+        var p = hashParams();
+        if (!lib || p.params.get('jellyusb') !== 'media' || !window.ApiClient) { exitView(); return; }
+        var page = visibleMoviesPage();
+        if (!page) { return; }
+        addStyle();
+        var mediaId = p.params.get('mediaId');
+        var key = lib + '|' + (mediaId || '');
+        var view = document.getElementById(VIEW_ID);
+        if (view && view.parentElement !== page) { exitView(); view = null; }
+        Array.prototype.forEach.call(page.children, function (c) {
+            if (c.id !== VIEW_ID) { hide(c); }
+        });
+        hideToolbarExtras();
+        setTitle(true);
+        if (view && currentKey === key) { return; }
+        if (!view) {
+            view = document.createElement('div');
+            view.id = VIEW_ID;
+            page.appendChild(view);
+        }
+        currentKey = key;
+        view.innerHTML = '<p class="jusb-note">Chargement…</p>';
+        window.scrollTo(0, 0);
+        getMedia(lib, true).then(function (list) {
+            if (currentKey !== key || !document.body.contains(view)) { return; }
+            if (mediaId) { renderMedium(view, lib, list, mediaId); } else { renderRows(view, lib, list); }
+        });
+    }
+
+    function closeMenu(menu) {
+        var backdrop = menu.querySelector('.MuiBackdrop-root, .MuiModal-backdrop');
+        if (backdrop) { backdrop.click(); return; }
+        menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    }
+
+    function ensureMenuItem() {
+        var menu = document.getElementById('library-view-menu');
+        var lib = libraryId();
+        if (!menu || !lib) { return; }
+        var ul = menu.querySelector('ul[role="menu"]');
+        if (!ul || ul.querySelector('.jusb-menuitem')) { return; }
+        var natives = ul.querySelectorAll('li[role="menuitem"]');
+        if (!natives.length) { return; }
+        var inView = hashParams().params.get('jellyusb') === 'media';
+
+        // A native choice while our view is shown: let jellyfin-web switch, then drop our parameter.
+        Array.prototype.forEach.call(natives, function (li) {
+            if (inView) { li.classList.remove('Mui-selected'); }
+            if (li.__jusbHooked) { return; }
+            li.__jusbHooked = true;
+            li.addEventListener('click', function () {
+                if (hashParams().params.get('jellyusb') !== 'media') { return; }
+                setTimeout(function () {
+                    if (hashParams().params.get('jellyusb') === 'media') { location.replace(leaveHash()); }
+                }, 0);
+            }, true);
+        });
+
+        var cached = mediaCache[lib];
+        var add = function (list) {
+            if (!list.length || ul.querySelector('.jusb-menuitem') || !document.body.contains(ul)) { return; }
+            var li = natives[natives.length - 1].cloneNode(false);
+            li.classList.remove('Mui-selected');
+            if (inView) { li.classList.add('Mui-selected'); }
+            li.classList.add('jusb-menuitem');
+            li.setAttribute('tabindex', '-1');
+            li.textContent = SETTINGS.mediaViewName || 'MediaID';
+            li.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeMenu(menu);
+                if (!inView || hashParams().params.get('mediaId')) { location.hash = viewHash(null); }
+            });
+            ul.appendChild(li);
+        };
+        if (cached && cached.list) { add(cached.list); } else { getMedia(lib).then(add); }
+    }
+
+    if (SETTINGS.mediaView) {
+        setInterval(ensureMediaView, 500);
+        window.addEventListener('hashchange', function () { setTimeout(ensureMediaView, 0); });
+        new MutationObserver(ensureMenuItem).observe(document.body, { childList: true, subtree: true });
+    }
 })();
+

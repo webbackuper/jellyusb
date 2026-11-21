@@ -110,23 +110,32 @@ public class ActivityService
         foreach (var id in ids)
         {
             var path = basePath + "/" + id;
-            var state = _mountTable.GetState(path);
-            var present = state == MountState.Mounted;
-            if (state == MountState.NotAMountPoint)
-            {
-                try
-                {
-                    present = Directory.Exists(path) && Directory.EnumerateFileSystemEntries(path).Any();
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    present = false;
-                }
-            }
-            media.Add(new MediaState(id, path, present, users.TryGetValue(id, out var list) ? list : []));
+            media.Add(new MediaState(id, path, IsPresent(_mountTable, path), users.TryGetValue(id, out var list) ? list : []));
         }
 
         return new Activity(DateTime.UtcNow, tasks, media, note);
+    }
+
+    /// <summary>
+    /// Whether a medium is plugged: a mounted mount point, or a plain non-empty folder. An automount
+    /// point that is not mounted is absent and is not touched (touching it would try to mount it).
+    /// </summary>
+    internal static bool IsPresent(MountTable mountTable, string path)
+    {
+        var state = mountTable.GetState(path);
+        if (state != MountState.NotAMountPoint)
+        {
+            return state == MountState.Mounted;
+        }
+
+        try
+        {
+            return Directory.Exists(path) && Directory.EnumerateFileSystemEntries(path).Any();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private static void ScanProcesses(string basePath, Action<string?, MediaUser> add)

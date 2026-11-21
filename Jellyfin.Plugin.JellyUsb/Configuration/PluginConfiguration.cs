@@ -71,6 +71,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether the script adds the "running now" panel to Scheduled Tasks.</summary>
     public bool WebTasksPanel { get; set; } = true;
 
+    /// <summary>Gets or sets a value indicating whether the library view menu offers a view of the movies by MediaID.</summary>
+    public bool WebMediaView { get; set; } = true;
+
+    /// <summary>Gets or sets the name of that view in the menu.</summary>
+    public string WebMediaViewName { get; set; } = "MediaID";
+
     /// <summary>Gets or sets the delay before sending the message to Android TV, so it shows after the error toast.</summary>
     public int AndroidTvMessageDelayMs { get; set; } = 300;
 

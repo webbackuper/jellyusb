@@ -24,6 +24,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddTransient<IStartupFilter, JellyUsbStartupFilter>();
 
         serviceCollection.AddSingleton<Web.ActivityService>();
+        serviceCollection.AddSingleton<Web.MediaLibraryService>();
         serviceCollection.AddSingleton<ItemTextRepairer>();
         serviceCollection.AddHostedService<ImportRepairService>();
     }

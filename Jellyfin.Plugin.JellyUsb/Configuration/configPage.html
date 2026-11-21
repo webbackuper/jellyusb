@@ -100,6 +100,16 @@
                                 <span>Afficher « En cours d'exécution » et l'état des supports en haut des Tâches planifiées</span>
                             </label>
                         </div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="WebMediaView" type="checkbox" is="emby-checkbox" />
+                                <span>Ajouter une vue par MediaID au menu des bibliothèques de films</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">Une ligne par support USB, avec son image de fond ; un clic sur un support affiche tous ses films.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="WebMediaViewName" label="Nom de la vue dans le menu" />
+                        </div>
                     </div>
 
                     <div class="verticalSection">
@@ -156,8 +166,8 @@
             (function () {
                 var pluginId = '9f8d8889-7b20-47d5-ad9a-37807e42e4ce';
                 var page = document.querySelector('#JellyUsbConfigPage');
-                var texts = ['BasePath', 'MissingMediaHeader', 'MissingMediaText', 'MissingFileHeader', 'MissingFileText', 'ShortMissingMediaText', 'ShortMissingFileText', 'WebDisplayMode'];
-                var checks = ['EnablePlaybackCheck', 'EnableWebEnhancements', 'WebCloseGenericDialog', 'WebTasksPanel', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
+                var texts = ['BasePath', 'MissingMediaHeader', 'MissingMediaText', 'MissingFileHeader', 'MissingFileText', 'ShortMissingMediaText', 'ShortMissingFileText', 'WebDisplayMode', 'WebMediaViewName'];
+                var checks = ['EnablePlaybackCheck', 'EnableWebEnhancements', 'WebCloseGenericDialog', 'WebTasksPanel', 'WebMediaView', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
 
                 page.addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();

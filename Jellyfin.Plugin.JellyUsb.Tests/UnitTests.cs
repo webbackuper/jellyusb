@@ -274,3 +274,37 @@ public class WordFillTests
         Assert.Null(Mojibake.FillReplacementChars("� bout", ["Un film — 2010"]));
     }
 }
+
+public class MediaBackgroundTests
+{
+    [Fact]
+    public void Neighbouring_media_get_clearly_different_colours()
+    {
+        for (var i = 0; i < 99; i++)
+        {
+            var a = Web.MediaBackground.Hue($"MOVIES{i:00}");
+            var b = Web.MediaBackground.Hue($"MOVIES{i + 1:00}");
+            var gap = System.Math.Abs(a - b);
+            Assert.True(System.Math.Min(gap, 360 - gap) >= 40, $"MOVIES{i:00} / MOVIES{i + 1:00}: {a} vs {b}");
+        }
+    }
+
+    [Fact]
+    public void Hue_is_stable_and_in_range()
+    {
+        Assert.Equal(Web.MediaBackground.Hue("MOVIES02"), Web.MediaBackground.Hue("MOVIES02"));
+        Assert.InRange(Web.MediaBackground.Hue("SANS-NUMERO"), 0, 359);
+    }
+
+    [Fact]
+    public void Svg_shows_the_media_id_and_escapes_it()
+    {
+        var svg = Web.MediaBackground.Build("MOVIES02");
+        Assert.StartsWith("<svg", svg.TrimStart());
+        Assert.Contains(">MOVIES02<", svg);
+        var odd = Web.MediaBackground.Build("A<b>&\"c");
+        Assert.DoesNotContain("<b>", odd);
+        Assert.Contains("A&lt;b&gt;&amp;", odd);
+        System.Xml.Linq.XDocument.Parse(odd); // well-formed
+    }
+}

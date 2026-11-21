@@ -20,6 +20,9 @@ du support qui a servi à l'import (`MOVIES00`, `MOVIES01`… `MOVIES99`).
    - **À chaque ajout ou actualisation**, le double encodage (« Ã© ») et les « � » sont réparés quand
      c'est possible.
    - **Pour l'existant**, une tâche planifiée répare ce qui est déjà en base.
+4. **Vue par MediaID.** Dans une bibliothèque de films, le menu des vues (en haut à gauche, à côté de
+   « Films », « Suggestions »…) propose « MediaID » : une ligne par support USB avec son image de fond,
+   puis la page de chaque support avec tous ses films.
 
 Le plugin ne modifie **jamais** les fichiers des disques, ne surveille pas les branchements et ne
 lance aucun scan de lui-même.
@@ -115,6 +118,31 @@ Le panneau et la fermeture automatique de la fenêtre générique viennent d'un 
 plugin ajoute à la volée à `index.html` de jellyfin-web. Aucun fichier de Jellyfin n'est modifié, et
 le script se désactive dans la page de configuration.
 
+## Vue « MediaID » d'une bibliothèque de films
+
+Dans l'interface web, ouvrez une bibliothèque de films et choisissez **MediaID** dans le menu en haut
+à gauche.
+- **Une ligne par support** (MOVIES00, MOVIES01…), comme les lignes des Suggestions. Chaque ligne
+  donne le nombre de films et l'état du support (**branché** ou **absent**), puis montre l'image de fond du
+  support et ses derniers films ajoutés. Les affiches d'un support absent sont grisées.
+- **Un clic sur le nom ou l'image d'un support** ouvre la page de ce support : tous ses films, par
+  ordre alphabétique, chargés au fil du défilement.
+- **Retour** : le bouton « ‹ MediaID » en haut de la page d'un support ramène à la liste des supports.
+  Le bouton Précédent du navigateur marche aussi, y compris depuis la fiche d'un film. Choisir une
+  autre vue dans le menu (Films, Genres…) quitte la vue MediaID.
+
+L'image de fond est générée par le plugin : une clé USB étiquetée avec le MediaID, sur un dégradé dont
+la couleur dépend du numéro du support (deux supports voisins ont des couleurs bien différentes). Elle
+est servie par `GET /JellyUsb/Media/{MediaID}/Background` (SVG).
+
+Tout vient de la base de Jellyfin : la vue s'affiche aussi quand les disques sont débranchés, et elle
+ne touche jamais les disques. Un support est une racine de la bibliothèque située sous le chemin de
+base (`/mnt/usb/MOVIES02`) ; si la racine est le chemin de base lui-même (`/mnt/usb`), ses sous-dossiers
+sont les supports. La vue n'apparaît que dans les bibliothèques qui ont au moins un support.
+
+La vue n'existe que dans l'interface web, et dans les applications qui l'affichent (Jellyfin Media
+Player, jellyfin-android). Les applications natives (Android TV, Kodi, Swiftfin…) ne la proposent pas.
+
 ## Réglages (page de configuration)
 
 | Réglage | Défaut | Rôle |
@@ -125,7 +153,8 @@ le script se désactive dans la page de configuration.
 | Affichage web | message au premier plan | Autre choix : notre texte dans la fenêtre « Erreur de lecture » de jellyfin-web, qui reste alors recouverte par la fenêtre générique |
 | Textes courts | voir plus haut | Utilisés pour les toasts Android TV (coupés après deux lignes) et les notifications Kodi |
 | Délais web / Android TV | 300 / 300 ms | Pour que notre message arrive après la fenêtre ou le toast d'erreur de l'application |
-| Script de l'interface web | oui | Fermeture de la fenêtre générique et panneau des tâches (désactivables séparément) |
+| Script de l'interface web | oui | Fermeture de la fenêtre générique, panneau des tâches et vue MediaID (désactivables séparément) |
+| Nom de la vue par MediaID | `MediaID` | Texte affiché dans le menu des vues |
 | Lire les NFO non UTF‑8 en Windows‑1252 | oui | Lecteur « JellyUSB NFO », placé automatiquement avant « Nfo » |
 | Réparer les textes à l'import | oui | Titres, titre original, résumé, slogan, genres, studios, tags, chapitres, pistes |
 | Compléter depuis TheMovieDb | oui | Si ni le NFO ni le titre original ne donnent la lettre, la tâche demande le titre à TheMovieDb (par identifiant) et ne comble les « � » que s'il correspond partout ailleurs |
@@ -175,6 +204,13 @@ main ou par une actualisation depuis TMDb.
   - événements `ItemAdded` / `ItemUpdated` ;
   - enregistrement en `ItemUpdateType.MetadataImport`, qui n'écrit rien sur les disques ;
   - tâche `IScheduledTask`.
+
+- **Vue MediaID** : le script ajoute une entrée au menu `#library-view-menu` de jellyfin-web. Il
+  remplace le contenu de la page par sa vue quand l'adresse contient `jellyusb=media` (et
+  `mediaId=…` pour la page d'un support), d'où l'historique du navigateur. Les données viennent de :
+  - `GET /JellyUsb/Libraries/{id}/Media`, la liste des supports ;
+  - `GET /JellyUsb/Libraries/{id}/Media/{MediaID}/Items`, les films d'un support, filtrés par
+    dossier parent avec les droits de l'utilisateur.
 
 ## Tests
 

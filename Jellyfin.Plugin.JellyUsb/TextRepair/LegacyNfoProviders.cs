@@ -160,17 +160,19 @@ public abstract class LegacyNfoProvider<T> : ILocalMetadataProvider<T>, IHasItem
             return Task.FromResult(result);
         }
 
-        Directory.CreateDirectory(_appPaths.TempDirectory);
-        var tempFile = Path.Combine(_appPaths.TempDirectory, "jellyusb-" + Guid.NewGuid().ToString("N") + ".nfo");
+        // Our own folder in the server cache: the shared temp folder may belong to another user.
+        var tempDir = Path.Combine(_appPaths.CachePath, "jellyusb");
+        var tempFile = Path.Combine(tempDir, Guid.NewGuid().ToString("N") + ".nfo");
         try
         {
+            Directory.CreateDirectory(tempDir);
             File.WriteAllText(tempFile, text, new UTF8Encoding(false));
             result.Item = new T { IndexNumber = info.IndexNumber };
             Fetch(result, tempFile, cancellationToken);
             result.HasMetadata = true;
             Logger.LogInformation("JellyUSB: NFO en Windows-1252 lu et converti : {Path}", file.FullName);
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Logger.LogWarning(ex, "JellyUSB: could not read the legacy NFO {Path}", file.FullName);
             result.HasMetadata = false;

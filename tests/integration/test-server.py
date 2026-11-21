@@ -101,11 +101,14 @@ def start(instance, media):
 """)
     install_plugin(instance)
     log = open(os.path.join(instance, "stdout.log"), "ab")
+    # Jellyfin's temp folder is <TMPDIR>/jellyfin: never let the test instance create the server's one.
+    tmpdir = os.path.join(instance, "tmp")
+    os.makedirs(tmpdir, exist_ok=True)
     proc = subprocess.Popen(
         [JF_BIN, "--datadir", f"{instance}/data", "--configdir", f"{instance}/config",
          "--cachedir", f"{instance}/cache", "--logdir", f"{instance}/log",
          "--webdir", "/usr/share/jellyfin/web", "--ffmpeg", "/usr/lib/jellyfin-ffmpeg/ffmpeg"],
-        stdout=log, stderr=subprocess.STDOUT, start_new_session=True, env={**os.environ, "LANG": "fr_FR.UTF-8"})
+        stdout=log, stderr=subprocess.STDOUT, start_new_session=True, env={**os.environ, "LANG": "fr_FR.UTF-8", "TMPDIR": tmpdir})
     with open(os.path.join(instance, "server.pid"), "w") as f:
         f.write(str(proc.pid))
     info = wait_up()

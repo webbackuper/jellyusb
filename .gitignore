@@ -9,3 +9,7 @@ TestResults/
 # Notes propres à la machine locale
 LOCAL.md
 *.local
+
+# Python
+__pycache__/
+*.pyc

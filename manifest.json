@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.2.0.0",
+        "changelog": "Un disque absent derrière un automontage (« No such device ») ne fait plus échouer le scan de la médiathèque : son dossier est traité comme vide, ses films sont conservés et les autres disques sont scannés.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.2.0.0/jellyusb_1.2.0.0.zip",
+        "checksum": "c3b61ac9c3d1a117bae1e8ed90b8e969",
+        "timestamp": "2026-11-21T18:52:19Z"
+      },
+      {
         "version": "1.1.0.0",
         "changelog": "La tâche « Réparer les titres mal encodés » complète les titres illisibles depuis TheMovieDb (par identifiant), sans brancher le support. Les « � » ne sont remplacés que si le titre trouvé correspond partout ailleurs.",
         "targetAbi": "12.4.0.0",

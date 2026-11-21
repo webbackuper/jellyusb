@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.1.0.0",
+        "changelog": "La tâche « Réparer les titres mal encodés » complète les titres illisibles depuis TheMovieDb (par identifiant), sans brancher le support. Les « � » ne sont remplacés que si le titre trouvé correspond partout ailleurs.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.1.0.0/jellyusb_1.1.0.0.zip",
+        "checksum": "cd5e21c3a1341281e83102029046b7fd",
+        "timestamp": "2026-11-21T18:20:31Z"
+      },
+      {
         "version": "1.0.0.0",
         "changelog": "Première version : vérification du support USB avant lecture (web, Android, Android TV, Kodi), lecture des NFO en Windows-1252, réparation des titres mal encodés.",
         "targetAbi": "12.4.0.0",

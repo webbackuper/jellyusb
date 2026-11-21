@@ -17,6 +17,9 @@ PLUGINS_DIR="$DATA_DIR/plugins"
 DEST="$PLUGINS_DIR/JellyUSB_$VERSION"
 DB_DIR="$DATA_DIR/data"
 LOG_DIR="${JELLYFIN_LOG_DIR:-/var/log/jellyfin}"
+CONFIG_DIR="${JELLYFIN_CONFIG_DIR:-/etc/jellyfin}"
+REPO_NAME="JellyUSB"
+REPO_URL="https://raw.githubusercontent.com/webbackuper/jellyusb/main/manifest.json"
 URL="http://127.0.0.1:8096"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DLL="$HERE/Jellyfin.Plugin.JellyUsb/bin/Release/net10.0/Jellyfin.Plugin.JellyUsb.dll"
@@ -73,7 +76,31 @@ for f in jellyfin.db jellyfin.db-wal jellyfin.db-shm; do
     [ -f "$DB_DIR/$f" ] && cp -a "$DB_DIR/$f" "$BACKUP/"
 done
 cp -a "$DATA_DIR/root/default" "$BACKUP/library-options"
+[ -f "$CONFIG_DIR/system.xml" ] && cp -a "$CONFIG_DIR/system.xml" "$BACKUP/"
 chown -R jellyfin:jellyfin "$BACKUP"
+
+# Plugin repository: lets Jellyfin show the plugin details (otherwise "Une erreur s'est produite lors
+# de la récupération des détails du plugin depuis le dépôt") and offer updates.
+if [ -f "$CONFIG_DIR/system.xml" ]; then
+    python3 -I - "$CONFIG_DIR/system.xml" "$REPO_NAME" "$REPO_URL" <<'PYEOF'
+import re, sys
+path, name, url = sys.argv[1:4]
+text = open(path, encoding="utf-8").read()
+if "<Url>" + url + "</Url>" in text:
+    print("==> Dépôt de plugins JellyUSB déjà déclaré")
+    sys.exit(0)
+entry = ("    <RepositoryInfo>\n      <Name>%s</Name>\n      <Url>%s</Url>\n"
+         "      <Enabled>true</Enabled>\n    </RepositoryInfo>\n" % (name, url))
+if re.search(r"^\s*</PluginRepositories>", text, re.M):
+    text = re.sub(r"^(\s*)</PluginRepositories>", lambda m: entry + m.group(1) + "</PluginRepositories>", text, count=1, flags=re.M)
+elif re.search(r"<PluginRepositories\s*/>", text):
+    text = re.sub(r"<PluginRepositories\s*/>", "<PluginRepositories>\n" + entry + "  </PluginRepositories>", text, count=1)
+else:
+    text = text.replace("</ServerConfiguration>", "  <PluginRepositories>\n" + entry + "  </PluginRepositories>\n</ServerConfiguration>", 1)
+open(path, "w", encoding="utf-8").write(text)
+print("==> Dépôt de plugins JellyUSB ajouté : " + url)
+PYEOF
+fi
 
 info "Installation du plugin dans $DEST"
 rm -rf "$PLUGINS_DIR"/JellyUSB_*

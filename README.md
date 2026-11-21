@@ -77,8 +77,9 @@ sudo ./install.sh
 Ce que fait `install.sh` :
 1. arrête Jellyfin ;
 2. **sauvegarde la base** (`/var/lib/jellyfin/data/jellyusb-backup-<date>/`) ;
-3. copie le plugin dans `/var/lib/jellyfin/plugins/JellyUSB_1.0.0.0/` ;
-4. redémarre Jellyfin et vérifie que le plugin est chargé.
+3. copie le plugin dans `/var/lib/jellyfin/plugins/JellyUSB_<version>/` ;
+4. déclare le dépôt de plugins JellyUSB (fiche du plugin et mises à jour dans le tableau de bord) ;
+5. redémarre Jellyfin et vérifie que le plugin est chargé.
 
 Pour désinstaller : `sudo ./install.sh --uninstall`.
 

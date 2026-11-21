@@ -1,0 +1,11 @@
+bin/
+obj/
+artifacts/
+*.user
+.vs/
+.idea/
+TestResults/
+
+# Notes propres à la machine locale
+LOCAL.md
+*.local

@@ -1,0 +1,360 @@
+#!/bin/bash
+# jellyusb-mount -- mount/unmount "MOVIESnn" USB drives for Jellyfin.
+#
+#   jellyusb-mount mount  LABEL   mount /dev/disk/by-label/LABEL on $BASE/LABEL
+#   jellyusb-mount umount LABEL   unmount $BASE/LABEL and remove the (empty) directory
+#   jellyusb-mount status         list $BASE/* and the matching drives present
+#   jellyusb-mount cleanup LABEL  (unit ExecStopPost) rmdir $BASE/LABEL if empty
+#                                 and not mounted; never unmounts anything
+#
+# Normally run by jellyusb-mount@LABEL.service (started by udev, stopped when the
+# device disappears). When run by hand, "mount"/"umount" delegate to systemctl so
+# the unit state stays consistent; set JELLYUSB_DIRECT=1 to bypass that.
+#
+# Invariant: while a drive is absent, $BASE/LABEL does not exist (Jellyfin keeps
+# library items whose root folder is missing; an empty or ENODEV folder would
+# make it drop them or abort the scan).
+#
+# Configuration: /etc/default/jellyusb-mount (shell variables, see defaults below).
+
+set -eu
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 022
+shopt -s nullglob dotglob
+
+PROG=jellyusb-mount
+CONFIG=/etc/default/jellyusb-mount
+
+# ---- defaults (override in $CONFIG) -----------------------------------------
+OWNER_UID=1000                 # owner of files on ntfs/exfat/vfat
+OWNER_GID=1000
+UMASK=022                      # 022 => files 644, dirs 755: readable by "jellyfin"
+NTFS_DRIVER=ntfs-3g            # ntfs-3g (FUSE) or ntfs3 (kernel)
+NTFS_RO_FALLBACK=yes           # unclean/hibernated NTFS: retry read-only (never "fixes")
+BASE=/mnt/usb
+LABEL_REGEX='^MOVIES[0-9]{2}$' # must stay consistent with 99-jellyusb.rules
+JELLYFIN_USER=jellyfin         # used for the "can jellyfin read it?" check
+SYNC_TIMEOUT=30                # seconds, before umount
+
+# ---- logging ------------------------------------------------------------------
+# Everything goes to the journal with tag "jellyusb-mount"
+# (journalctl -t jellyusb-mount). Also printed on stderr when run by hand (under
+# systemd stderr already lands in the journal: not duplicated).
+log() { # log PRIORITY MESSAGE...
+    local prio=$1; shift
+    local have_logger=0
+    if command -v logger >/dev/null 2>&1; then
+        have_logger=1
+        logger -t "$PROG" -p "daemon.$prio" -- "$*" 2>/dev/null || have_logger=0
+    fi
+    if [ "${JELLYUSB_FROM_SYSTEMD:-0}" != 1 ] || [ "$have_logger" = 0 ]; then
+        printf '%s: %s: %s\n' "$PROG" "$prio" "$*" >&2
+    fi
+}
+info() { log info "$@"; }
+warn() { log warning "$@"; }
+err()  { log err "$@"; }
+die()  { err "$@"; exit 1; }
+
+usage() {
+    cat >&2 <<EOF
+usage: $PROG mount LABEL | umount LABEL | status | cleanup LABEL
+  LABEL must match $LABEL_REGEX
+EOF
+    exit 2
+}
+
+# ---- configuration ------------------------------------------------------------
+load_config() {
+    [ -e "$CONFIG" ] || return 0
+    local owner mode
+    owner=$(stat -c '%u' -- "$CONFIG") || die "cannot stat $CONFIG"
+    mode=$(stat -c '%a' -- "$CONFIG") || die "cannot stat $CONFIG"
+    # Sourced by a root script: refuse a file that someone else could have written.
+    [ "$owner" = 0 ] || die "$CONFIG is not owned by root, refusing to read it"
+    case $mode in
+        *[2367]?|*[2367]) die "$CONFIG is group/world writable (mode $mode), refusing to read it" ;;
+    esac
+    # shellcheck source=/dev/null
+    . "$CONFIG"
+}
+
+check_config() {
+    case $OWNER_UID in ''|*[!0-9]*) die "invalid OWNER_UID='$OWNER_UID'" ;; esac
+    case $OWNER_GID in ''|*[!0-9]*) die "invalid OWNER_GID='$OWNER_GID'" ;; esac
+    [[ $UMASK =~ ^[0-7]{3,4}$ ]] || die "invalid UMASK='$UMASK'"
+    case $NTFS_DRIVER in ntfs-3g|ntfs3) ;; *) die "invalid NTFS_DRIVER='$NTFS_DRIVER' (ntfs-3g|ntfs3)" ;; esac
+    case $NTFS_RO_FALLBACK in yes|no) ;; *) die "invalid NTFS_RO_FALLBACK='$NTFS_RO_FALLBACK' (yes|no)" ;; esac
+    case $SYNC_TIMEOUT in ''|*[!0-9]*) die "invalid SYNC_TIMEOUT='$SYNC_TIMEOUT'" ;; esac
+    # BASE: absolute, simple characters only (it is compared to /proc/self/mounts,
+    # which escapes spaces etc.), no "." / ".." components, not "/".
+    [[ $BASE =~ ^(/[A-Za-z0-9_.-]+)+$ ]] || die "invalid BASE='$BASE'"
+    case /$BASE/ in */./*|*/../*) die "invalid BASE='$BASE'" ;; esac
+}
+
+validate_label() {
+    local label=$1
+    # Hard safety net, independent of LABEL_REGEX: no "/", no ".", no spaces,
+    # nothing that could escape $BASE or be taken as an option.
+    [[ $label =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$ ]] || die "refusing label '$label': invalid characters"
+    [[ $label =~ $LABEL_REGEX ]] || die "refusing label '$label': does not match LABEL_REGEX $LABEL_REGEX"
+}
+
+# ---- helpers ------------------------------------------------------------------
+# /proc/self/mounts is read directly: no stat() on the mount point, so this works
+# on dead FUSE mounts (ENOTCONN) and never triggers an automount.
+is_mounted()   { awk -v mp="$1" '$2 == mp { f = 1 } END { exit !f }' /proc/self/mounts; }
+mount_field()  { awk -v mp="$1" -v n="$2" '$2 == mp { v = $n } END { if (v != "") print v }' /proc/self/mounts; }
+mounted_where() { awk -v d="$1" '$1 == d { print $2 }' /proc/self/mounts; }
+
+dir_is_empty() { local e=("$1"/*); [ "${#e[@]}" -eq 0 ]; }
+
+from_systemd()  { [ "${JELLYUSB_FROM_SYSTEMD:-0}" = 1 ]; }
+have_systemd()  { [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; }
+delegate_ok()   { ! from_systemd && [ "${JELLYUSB_DIRECT:-0}" != 1 ] && have_systemd; }
+unit_of()       { printf 'jellyusb-mount@%s.service' "$1"; }
+
+ERRF=
+cleanup_tmp() { [ -z "$ERRF" ] || rm -f -- "$ERRF"; }
+trap cleanup_tmp EXIT
+errfile() { [ -n "$ERRF" ] || ERRF=$(mktemp "${TMPDIR:-/tmp}/$PROG.XXXXXX"); : >"$ERRF"; }
+errtext() { tr '\n' ' ' <"$ERRF" 2>/dev/null || true; }
+
+remove_dir_if_empty() { # remove_dir_if_empty MP
+    local mp=$1
+    # [ -d ] on a dead FUSE mount fails (ENOTCONN); we only get here once unmounted.
+    if [ -L "$mp" ] || { [ -e "$mp" ] && [ ! -d "$mp" ]; }; then
+        warn "$mp exists but is not a directory, leaving it alone"
+        return 1
+    fi
+    [ -d "$mp" ] || return 0
+    if is_mounted "$mp"; then
+        err "$mp is still a mount point, not removing it"
+        return 1
+    fi
+    if ! dir_is_empty "$mp"; then
+        warn "$mp is not empty (files written while the drive was absent?), NOT removed -- Jellyfin will see an empty/partial folder; clean it up by hand"
+        return 1
+    fi
+    if rmdir -- "$mp"; then
+        info "removed $mp"
+    else
+        warn "rmdir $mp failed"
+        return 1
+    fi
+}
+
+# Can the Jellyfin service user list the mount root? (ext4/xfs/btrfs keep their
+# own permissions; ntfs/exfat/vfat are fine with umask=022.)
+check_jellyfin_access() { # check_jellyfin_access MP FSTYPE
+    local mp=$1 fstype=$2
+    id -u "$JELLYFIN_USER" >/dev/null 2>&1 || return 0
+    command -v runuser >/dev/null 2>&1 || return 0
+    if ! runuser -u "$JELLYFIN_USER" -- test -r "$mp" -a -x "$mp" 2>/dev/null; then
+        warn "user '$JELLYFIN_USER' cannot read $mp ($fstype): fix permissions on the drive, e.g. 'chmod -R a+rX $mp' or 'setfacl -R -m u:$JELLYFIN_USER:rX -m d:u:$JELLYFIN_USER:rX $mp'"
+    fi
+}
+
+# ---- mount --------------------------------------------------------------------
+do_mount() {
+    local label=$1
+    local link="/dev/disk/by-label/$label" mp="$BASE/$label"
+    local dev fstype type opts common where
+
+    [ -b "$link" ] || die "$label: $link not found (drive absent?)"
+    dev=$(readlink -f -- "$link")
+    [ -b "$dev" ] || die "$label: $link does not resolve to a block device"
+
+    fstype=$(blkid -c /dev/null -o value -s TYPE -- "$dev" 2>/dev/null || true)
+    [ -n "$fstype" ] || die "$label: cannot detect filesystem type on $dev (blkid)"
+
+    common="nosuid,nodev,noatime"
+    case $fstype in
+        ntfs)
+            if [ "$NTFS_DRIVER" = ntfs3 ]; then
+                type=ntfs3
+                opts="$common,uid=$OWNER_UID,gid=$OWNER_GID,umask=$UMASK,iocharset=utf8"
+            else
+                # ntfs-3g always converts names to UTF-8; LANG=C.UTF-8 is set by the unit.
+                type=ntfs-3g
+                opts="$common,uid=$OWNER_UID,gid=$OWNER_GID,umask=$UMASK"
+            fi ;;
+        exfat)
+            type=exfat
+            opts="$common,uid=$OWNER_UID,gid=$OWNER_GID,umask=$UMASK,iocharset=utf8" ;;
+        vfat)
+            type=vfat
+            opts="$common,uid=$OWNER_UID,gid=$OWNER_GID,umask=$UMASK,utf8,shortname=mixed,flush" ;;
+        ext2|ext3|ext4|xfs|btrfs)
+            # Permissions come from the filesystem itself: files must be world
+            # readable (or readable by the jellyfin group / an ACL).
+            type=$fstype
+            opts="defaults,noatime,nosuid,nodev" ;;
+        *)
+            die "$label: unsupported filesystem type '$fstype' on $dev, not mounting (supported: ntfs exfat vfat ext2/3/4 xfs btrfs)" ;;
+    esac
+
+    where=$(mounted_where "$dev")
+    [ -z "$where" ] || die "$label: $dev is already mounted on: ${where//$'\n'/ } -- unmount it first (desktop automount?)"
+
+    mkdir -p -m 0755 -- "$BASE"
+    if is_mounted "$mp"; then
+        die "$label: $mp is already a mount point ($(mount_field "$mp" 3)), refusing (legacy fstab/automount entry still active?)"
+    fi
+    if [ -L "$mp" ] || { [ -e "$mp" ] && [ ! -d "$mp" ]; }; then
+        die "$label: $mp exists and is not a directory, refusing"
+    fi
+    if [ -d "$mp" ]; then
+        dir_is_empty "$mp" || die "$label: $mp exists and is not empty, refusing to mount over it"
+    else
+        mkdir -m 0755 -- "$mp"
+    fi
+
+    errfile
+    info "$label: mounting $dev ($fstype) on $mp with -t $type -o $opts"
+    # stderr goes to a file, not a pipe: the FUSE daemon of ntfs-3g must not keep
+    # a command substitution open.
+    if mount -t "$type" -o "$opts" -- "$dev" "$mp" </dev/null >/dev/null 2>"$ERRF"; then
+        :
+    elif [ "$fstype" = ntfs ] && [ "$NTFS_RO_FALLBACK" = yes ]; then
+        warn "$label: mount failed: $(errtext)"
+        warn "$label: NTFS probably unclean or hibernated (Windows Fast Startup). Retrying READ-ONLY. Proper fix: plug it into Windows, disable Fast Startup and shut down fully; or see README (ntfsfix / remove_hiberfile, both risky)."
+        errfile
+        if ! mount -t "$type" -o "ro,$opts" -- "$dev" "$mp" </dev/null >/dev/null 2>"$ERRF"; then
+            err "$label: read-only mount failed too: $(errtext)"
+            remove_dir_if_empty "$mp" || true
+            exit 1
+        fi
+        warn "$label: mounted READ-ONLY on $mp"
+    else
+        err "$label: mount failed: $(errtext)"
+        remove_dir_if_empty "$mp" || true
+        exit 1
+    fi
+
+    if ! is_mounted "$mp"; then
+        err "$label: mount returned success but $mp is not a mount point"
+        remove_dir_if_empty "$mp" || true
+        exit 1
+    fi
+    check_jellyfin_access "$mp" "$fstype"
+    info "$label: mounted $dev ($fstype) on $mp"
+}
+
+# ---- umount -------------------------------------------------------------------
+do_umount() {
+    local label=$1
+    local mp="$BASE/$label" src i rc=0
+
+    errfile
+    for i in 1 2 3 4 5; do          # loop handles stacked mounts on the same path
+        is_mounted "$mp" || break
+        src=$(mount_field "$mp" 1)
+        if [ -n "$src" ] && [ -b "$src" ] && [ -e "/dev/disk/by-label/$label" ]; then
+            # Device still there: flush this filesystem only (bounded in time).
+            timeout -k 5 "$SYNC_TIMEOUT" sync -f -- "$mp" 2>/dev/null \
+                || warn "$label: sync of $mp failed or timed out"
+        else
+            info "$label: device $src is gone (unplugged without eject?), cleaning up"
+        fi
+        if umount -- "$mp" 2>"$ERRF"; then
+            info "$label: unmounted $mp"
+        else
+            warn "$label: umount $mp failed ($(errtext)); busy? falling back to lazy umount"
+            if umount -l -- "$mp" 2>"$ERRF"; then
+                warn "$label: lazily unmounted $mp (processes still holding files keep them until they close)"
+            else
+                err "$label: lazy umount of $mp failed: $(errtext)"
+                rc=1
+                break
+            fi
+        fi
+    done
+    if is_mounted "$mp"; then
+        err "$label: $mp is still mounted"
+        rc=1
+    fi
+    remove_dir_if_empty "$mp" || rc=1
+    return "$rc"
+}
+
+# ---- status -------------------------------------------------------------------
+do_status() {
+    local d label mounted fs src devfs unit state link dev seen=" "
+    printf '%-10s %-8s %-10s %-16s %-10s %s\n' LABEL MOUNTED FSTYPE SOURCE UNIT NOTE
+    for d in "$BASE"/*; do
+        label=${d##*/}
+        seen="$seen$label "
+        unit=$(unit_of "$label")
+        state=-
+        if have_systemd; then state=$(systemctl is-active "$unit" 2>/dev/null || true); fi
+        # Check /proc first: never stat() an autofs/dead FUSE mount point.
+        if is_mounted "$d"; then
+            mounted=yes; fs=$(mount_field "$d" 3); src=$(mount_field "$d" 1)
+            note=
+            case $fs in autofs) note="legacy automount (fstab) -- migrate it" ;; esac
+            case ",$(mount_field "$d" 4)," in *,ro,*) note="${note:+$note; }READ-ONLY" ;; esac
+        else
+            mounted=no; fs=-; src=-; note=
+            if [ -L "$d" ] || [ ! -d "$d" ]; then note="not a directory"
+            elif dir_is_empty "$d"; then note="empty dir, drive absent? (should not exist)"
+            else note="NOT EMPTY but not mounted (Jellyfin sees this!)"
+            fi
+            [[ $label =~ $LABEL_REGEX ]] || note="${note:+$note; }label outside LABEL_REGEX"
+        fi
+        printf '%-10s %-8s %-10s %-16s %-10s %s\n' "$label" "$mounted" "$fs" "$src" "$state" "$note"
+    done
+    # Drives present with a matching label but no folder at all.
+    for link in /dev/disk/by-label/*; do
+        label=${link##*/}
+        [[ $label =~ $LABEL_REGEX ]] || continue
+        case $seen in *" $label "*) continue ;; esac
+        dev=$(readlink -f -- "$link")
+        devfs=$(lsblk -dno FSTYPE -- "$dev" 2>/dev/null || true)
+        printf '%-10s %-8s %-10s %-16s %-10s %s\n' "$label" no "${devfs:--}" "$dev" - "drive present, not mounted (systemctl start $(unit_of "$label"))"
+    done
+}
+
+# ---- main ---------------------------------------------------------------------
+load_config
+check_config
+
+[ $# -ge 1 ] || usage
+cmd=$1; shift
+case $cmd in
+    cleanup)
+        [ $# -eq 1 ] || usage
+        validate_label "$1"
+        if is_mounted "$BASE/$1"; then
+            # Not ours to touch (e.g. ExecStart refused because of a legacy mount).
+            info "$1: $BASE/$1 is mounted, cleanup leaves it alone"
+        else
+            remove_dir_if_empty "$BASE/$1" || true
+        fi ;;
+    mount|umount|unmount)
+        [ $# -eq 1 ] || usage
+        label=$1
+        validate_label "$label"
+        [ "$(id -u)" = 0 ] || die "must be run as root"
+        unit=$(unit_of "$label")
+        if [ "$cmd" = mount ]; then
+            if delegate_ok; then
+                info "$label: starting $unit"
+                exec systemctl start -- "$unit"
+            fi
+            do_mount "$label"
+        else
+            if delegate_ok && systemctl is-active --quiet -- "$unit"; then
+                info "$label: stopping $unit"
+                systemctl stop -- "$unit" || true
+                # ExecStop already did the work; fall through to catch leftovers.
+            fi
+            do_umount "$label"
+        fi ;;
+    status)
+        [ $# -eq 0 ] || usage
+        do_status ;;
+    -h|--help|help) usage ;;
+    *) usage ;;
+esac

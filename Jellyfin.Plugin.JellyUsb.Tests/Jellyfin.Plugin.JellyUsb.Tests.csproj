@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <JellyfinBinDir Condition="'$(JellyfinBinDir)' == ''">/usr/lib/jellyfin/bin</JellyfinBinDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="Jellyfin.Controller" Version="12.4.0" />
+    <PackageReference Include="Jellyfin.Model" Version="12.4.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../Jellyfin.Plugin.JellyUsb/Jellyfin.Plugin.JellyUsb.csproj" />
+    <Reference Include="MediaBrowser.XbmcMetadata">
+      <HintPath>$(JellyfinBinDir)/MediaBrowser.XbmcMetadata.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

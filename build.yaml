@@ -1,0 +1,18 @@
+---
+name: "JellyUSB"
+guid: "9f8d8889-7b20-47d5-ad9a-37807e42e4ce"
+version: "1.0.0.0"
+targetAbi: "12.4.0.0"
+framework: "net10.0"
+overview: "Vérifie la présence du support USB avant la lecture et répare les caractères accentués"
+description: >
+  Avant chaque lecture d'un média situé sous /mnt/usb/<MediaID>/, JellyUSB vérifie que le
+  support USB est branché et que le fichier existe. Sinon la lecture est bloquée et le client
+  affiche un message demandant d'insérer le support. JellyUSB lit aussi les NFO encodés en
+  Windows-1252 et répare les titres mal encodés (« � », « Ã© »).
+category: "General"
+owner: "webbackuper"
+artifacts:
+- "Jellyfin.Plugin.JellyUsb.dll"
+changelog: >
+  1.0.0.0 : première version.

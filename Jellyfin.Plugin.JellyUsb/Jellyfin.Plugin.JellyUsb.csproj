@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Jellyfin.Plugin.JellyUsb</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Server binaries, used for MediaBrowser.XbmcMetadata (not published on NuGet). -->
+    <JellyfinBinDir Condition="'$(JellyfinBinDir)' == ''">/usr/lib/jellyfin/bin</JellyfinBinDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Jellyfin.Controller" Version="12.4.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="12.4.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <Reference Include="MediaBrowser.XbmcMetadata">
+      <HintPath>$(JellyfinBinDir)/MediaBrowser.XbmcMetadata.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\configPage.html" />
+    <InternalsVisibleTo Include="Jellyfin.Plugin.JellyUsb.Tests" />
+  </ItemGroup>
+
+</Project>

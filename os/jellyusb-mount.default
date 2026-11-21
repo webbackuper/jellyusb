@@ -1,0 +1,25 @@
+# /etc/default/jellyusb-mount -- read (sourced) by /usr/local/sbin/jellyusb-mount.
+# Must be owned by root and not group/world writable. Uncomment to override.
+
+# Owner of the files on ntfs / exfat / vfat (ignored for ext4 / xfs / btrfs).
+#OWNER_UID=1000
+#OWNER_GID=1000
+# 022 => files 644, directories 755: the "jellyfin" user can read everything.
+#UMASK=022
+
+# ntfs-3g (FUSE, default, current setup) or ntfs3 (kernel driver, faster).
+#NTFS_DRIVER=ntfs-3g
+# Unclean / hibernated NTFS: retry the mount READ-ONLY (yes) or fail (no).
+# Nothing is ever "repaired" automatically.
+#NTFS_RO_FALLBACK=yes
+
+# Parent directory (always present); mount points are $BASE/<LABEL>.
+#BASE=/mnt/usb
+# Bash ERE on the label. If you change it, change the glob in
+# /etc/udev/rules.d/99-jellyusb.rules too.
+#LABEL_REGEX='^MOVIES[0-9]{2}$'
+
+# User checked for read access after mounting ext4 / xfs / btrfs.
+#JELLYFIN_USER=jellyfin
+# Max seconds for "sync" before umount.
+#SYNC_TIMEOUT=30

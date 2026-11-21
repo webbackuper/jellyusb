@@ -1,0 +1,39 @@
+# /etc/udev/rules.d/99-jellyusb.rules
+#
+# Drives whose filesystem LABEL is MOVIES00..MOVIES99 are mounted on
+# /mnt/usb/<LABEL> by jellyusb-mount@<LABEL>.service, which is BindsTo= the
+# device: unplugging the drive stops the unit (umount + rmdir).
+#
+# Keep the glob below consistent with LABEL_REGEX in /etc/default/jellyusb-mount
+# (udev globs are anchored: "MOVIES[0-9][0-9]" matches exactly 8 characters).
+
+ACTION=="remove", GOTO="jellyusb_end"
+SUBSYSTEM!="block", GOTO="jellyusb_end"
+
+# Only the node that actually carries the filesystem: a partition, or a whole
+# disk formatted without partition table ("superfloppy"). A whole disk with a
+# partition table never qualifies, even if blkid also sees a stale FS signature
+# on it (avoids two devices claiming the same label).
+ENV{ID_FS_USAGE}!="filesystem", GOTO="jellyusb_end"
+ENV{DEVTYPE}=="disk", ENV{ID_PART_TABLE_TYPE}=="?*", GOTO="jellyusb_end"
+ENV{ID_FS_LABEL}!="MOVIES[0-9][0-9]", GOTO="jellyusb_end"
+
+# Keep udisks2 / the desktop file manager from auto-mounting the drive under
+# /media or /run/media (it would grab the device before us). Set on add AND
+# change so the property survives later "change" events.
+ENV{UDISKS_IGNORE}="1", ENV{UDISKS_AUTO}="0"
+
+# Expose as a systemd device unit (99-systemd.rules does it too for block
+# devices; explicit here so the rule is self-contained).
+TAG+="systemd"
+
+# Start the mount unit only on "add" (plug-in, or coldplug at boot).
+# systemd only acts on SYSTEMD_WANTS when the device unit first becomes active,
+# and restricting it to "add" guarantees that a "change" event (e.g. the one
+# udev emits when ntfs-3g closes the device after "systemctl stop") never
+# re-mounts a drive the user has just ejected.
+# Loop devices only get "change" on losetup: use
+#   udevadm trigger --action=add /dev/loopN[pM]   (see README).
+ACTION=="add", ENV{SYSTEMD_WANTS}+="jellyusb-mount@$env{ID_FS_LABEL}.service"
+
+LABEL="jellyusb_end"

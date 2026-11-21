@@ -1,0 +1,44 @@
+# /etc/systemd/system/jellyusb-mount@.service
+#
+# Instance name = filesystem label (MOVIES00..MOVIES99). Started by
+# 99-jellyusb.rules when the drive appears; stopped automatically when the
+# device disappears (BindsTo=), or by hand to eject safely:
+#   sudo systemctl stop jellyusb-mount@MOVIES03
+#
+# No automount: while the drive is absent /mnt/usb/<LABEL> must not exist at all
+# (an autofs point answering ENODEV broke every Jellyfin scan).
+
+[Unit]
+Description=Jellyfin USB drive %i on /mnt/usb/%i
+# /dev/disk/by-label/%i  ->  "systemd-escape -p --suffix=device" gives
+# dev-disk-by\x2dlabel-%i.device (labels are [A-Z0-9], so %i needs no escaping).
+BindsTo=dev-disk-by\x2dlabel-%i.device
+After=dev-disk-by\x2dlabel-%i.device
+After=local-fs.target
+# Boot: Jellyfin starts after the drives present at boot are mounted.
+# Shutdown/stop: Jellyfin is stopped before the drives are unmounted
+# (no busy files). Harmless if jellyfin.service does not exist.
+Before=jellyfin.service
+# DefaultDependencies=yes (implicit) adds Conflicts=/Before=shutdown.target:
+# clean umount at shutdown.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Tells the helper it runs under systemd (no delegation to systemctl).
+Environment=JELLYUSB_FROM_SYSTEMD=1 LANG=C.UTF-8
+ExecStart=/usr/local/sbin/jellyusb-mount mount %i
+# Clean umount on "systemctl stop"; on abrupt removal the helper skips sync,
+# falls back to "umount -l" and still removes the empty directory.
+ExecStop=-/usr/local/sbin/jellyusb-mount umount %i
+# Safety net, also run when ExecStart failed (ExecStop is skipped then):
+# removes /mnt/usb/%i if it is empty and not a mount point. Never unmounts
+# (a mount it did not make, e.g. a legacy fstab automount, is left alone).
+ExecStopPost=-/usr/local/sbin/jellyusb-mount cleanup %i
+# After ExecStop, leftover processes are killed (KillMode=control-group): if a
+# lazy umount was needed, that is the ntfs-3g FUSE daemon, which flushes and
+# closes the volume on SIGTERM.
+# ntfs-3g on a big or unclean volume can be slow to mount.
+TimeoutStartSec=120
+TimeoutStopSec=90
+# Mounts must be visible system-wide: no PrivateMounts / ProtectSystem here.

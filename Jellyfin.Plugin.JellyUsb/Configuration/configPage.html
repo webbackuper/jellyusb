@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>JellyUSB</title>
+</head>
+<body>
+    <div id="JellyUsbConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox,emby-textarea">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="JellyUsbConfigForm">
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Vérification avant lecture</h2>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnablePlaybackCheck" type="checkbox" is="emby-checkbox" />
+                                <span>Vérifier la présence du support avant chaque lecture</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">
+                                Si le support USB ou le fichier est absent, la lecture est bloquée et le client affiche un message.
+                            </div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="BasePath">Chemin de base</label>
+                            <input id="BasePath" type="text" is="emby-input" />
+                            <div class="fieldDescription">Le MediaID est le nom du dossier qui suit ce chemin (ex. /mnt/usb/<b>MOVIES03</b>/...).</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MissingMediaHeader">Titre : support absent</label>
+                            <input id="MissingMediaHeader" type="text" is="emby-input" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MissingMediaText">Message : support absent</label>
+                            <textarea id="MissingMediaText" is="emby-textarea" rows="3"></textarea>
+                            <div class="fieldDescription">Variables : {title} (titre), {mediaId} (nom du support), {path} (chemin du fichier).</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MissingFileHeader">Titre : fichier introuvable</label>
+                            <input id="MissingFileHeader" type="text" is="emby-input" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MissingFileText">Message : fichier introuvable sur un support présent</label>
+                            <textarea id="MissingFileText" is="emby-textarea" rows="3"></textarea>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="ShortMissingMediaText">Texte court (Android TV, Kodi) : support absent</label>
+                            <input id="ShortMissingMediaText" type="text" is="emby-input" />
+                            <div class="fieldDescription">Android TV coupe ses messages après deux lignes : gardez le MediaID au début.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="ShortMissingFileText">Texte court (Android TV, Kodi) : fichier introuvable</label>
+                            <input id="ShortMissingFileText" type="text" is="emby-input" />
+                        </div>
+
+                        <div class="selectContainer">
+                            <label class="selectLabel" for="WebDisplayMode">Affichage sur l'interface web et l'app Android</label>
+                            <select is="emby-select" id="WebDisplayMode" class="emby-select-withcolor emby-select">
+                                <option value="MessageOnTop">Message JellyUSB au premier plan (recommandé)</option>
+                                <option value="SingleDialog">Message JellyUSB dans la fenêtre « Erreur de lecture »</option>
+                            </select>
+                            <div class="fieldDescription">jellyfin-web affiche toujours sa propre fenêtre d'erreur quand une lecture est refusée. La première option ouvre le message JellyUSB par-dessus.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="WebMessageDelayMs">Délai du message sur l'interface web (ms)</label>
+                            <input id="WebMessageDelayMs" type="number" min="0" max="10000" is="emby-input" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="AndroidTvMessageDelayMs">Délai du message sur Android TV (ms)</label>
+                            <input id="AndroidTvMessageDelayMs" type="number" min="0" max="10000" is="emby-input" />
+                            <div class="fieldDescription">Pour que le message apparaisse après l'éventuel toast d'erreur de l'application.</div>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Caractères accentués</h2>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableNfoEncodingFallback" type="checkbox" is="emby-checkbox" />
+                                <span>Lire les NFO non UTF-8 en Windows-1252</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">
+                                Lecteur de métadonnées « JellyUSB NFO », placé automatiquement avant « Nfo ». Les fichiers NFO ne sont jamais modifiés.
+                            </div>
+                        </div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableImportRepair" type="checkbox" is="emby-checkbox" />
+                                <span>Réparer les textes à l'import et à chaque actualisation</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">
+                                « Ã© » → « é » dans les titres, résumés, chapitres et pistes ; « � » complété depuis le titre original quand il correspond.
+                            </div>
+                        </div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="RepairAfterLibraryScan" type="checkbox" is="emby-checkbox" />
+                                <span>Lancer « Réparer les titres mal encodés » après chaque scan de la médiathèque</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription" id="RepairFirstRunNote"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Enregistrer</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            (function () {
+                var pluginId = '9f8d8889-7b20-47d5-ad9a-37807e42e4ce';
+                var page = document.querySelector('#JellyUsbConfigPage');
+                var texts = ['BasePath', 'MissingMediaHeader', 'MissingMediaText', 'MissingFileHeader', 'MissingFileText', 'ShortMissingMediaText', 'ShortMissingFileText', 'WebDisplayMode'];
+                var checks = ['EnablePlaybackCheck', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'RepairAfterLibraryScan'];
+
+                page.addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        texts.forEach(function (k) { page.querySelector('#' + k).value = config[k] || ''; });
+                        checks.forEach(function (k) { page.querySelector('#' + k).checked = !!config[k]; });
+                        page.querySelector('#AndroidTvMessageDelayMs').value = config.AndroidTvMessageDelayMs;
+                        page.querySelector('#WebMessageDelayMs').value = config.WebMessageDelayMs;
+                        page.querySelector('#RepairFirstRunNote').textContent = config.RepairTaskRanOnce
+                            ? 'La tâche a déjà été lancée manuellement une fois : le lancement automatique est actif.'
+                            : 'Inactif tant que vous n\'avez pas lancé la tâche une première fois à la main (Tableau de bord > Tâches planifiées > JellyUSB).';
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+                page.querySelector('#JellyUsbConfigForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        texts.forEach(function (k) { config[k] = page.querySelector('#' + k).value; });
+                        checks.forEach(function (k) { config[k] = page.querySelector('#' + k).checked; });
+                        config.AndroidTvMessageDelayMs = parseInt(page.querySelector('#AndroidTvMessageDelayMs').value, 10) || 0;
+                        config.WebMessageDelayMs = parseInt(page.querySelector('#WebMessageDelayMs').value, 10) || 0;
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+                    return false;
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+[
+  {
+    "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "Première version : vérification du support USB avant lecture (web, Android, Android TV, Kodi), lecture des NFO en Windows-1252, réparation des titres mal encodés.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.0.0.0/jellyusb_1.0.0.0.zip",
+        "checksum": "4e8e213c2734a3ed560df6713d235a77",
+        "timestamp": "2026-11-21T18:09:15Z"
+      }
+    ],
+    "name": "JellyUSB",
+    "description": "Avant chaque lecture d'un film situé sous /mnt/usb/<MediaID>/, vérifie que le support USB est branché et que le fichier existe ; sinon la lecture est bloquée et le client affiche « Insérez le support <MediaID> ». Lit aussi les NFO en Windows-1252 et répare les titres mal encodés (« � », « Ã© »).",
+    "overview": "Vérification du support USB avant lecture, réparation des accents",
+    "owner": "webbackuper",
+    "category": "General",
+    "imageUrl": "https://raw.githubusercontent.com/webbackuper/jellyusb/main/assets/jellyusb.png"
+  }
+]

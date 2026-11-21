@@ -29,6 +29,8 @@
   <ItemGroup>
     <None Remove="Configuration\configPage.html" />
     <EmbeddedResource Include="Configuration\configPage.html" />
+    <None Remove="Web\jellyusb.js" />
+    <EmbeddedResource Include="Web\jellyusb.js" />
     <InternalsVisibleTo Include="Jellyfin.Plugin.JellyUsb.Tests" />
   </ItemGroup>
 

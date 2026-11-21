@@ -12,6 +12,7 @@ public class JellyUsbStartupFilter : IStartupFilter
     {
         return app =>
         {
+            app.UseMiddleware<Web.WebClientInjectionMiddleware>();
             app.UseMiddleware<PlaybackGuardMiddleware>();
             next(app);
         };

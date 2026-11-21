@@ -60,7 +60,16 @@ public class PluginConfiguration : BasePluginConfiguration
     public WebDisplayMode WebDisplayMode { get; set; } = WebDisplayMode.MessageOnTop;
 
     /// <summary>Gets or sets the delay before sending the message to the web client, so it opens on top.</summary>
-    public int WebMessageDelayMs { get; set; } = 800;
+    public int WebMessageDelayMs { get; set; } = 300;
+
+    /// <summary>Gets or sets a value indicating whether the JellyUSB script is added to jellyfin-web.</summary>
+    public bool EnableWebEnhancements { get; set; } = true;
+
+    /// <summary>Gets or sets a value indicating whether the script closes the generic "Playback error" dialog behind the JellyUSB message.</summary>
+    public bool WebCloseGenericDialog { get; set; } = true;
+
+    /// <summary>Gets or sets a value indicating whether the script adds the "running now" panel to Scheduled Tasks.</summary>
+    public bool WebTasksPanel { get; set; } = true;
 
     /// <summary>Gets or sets the delay before sending the message to Android TV, so it shows after the error toast.</summary>
     public int AndroidTvMessageDelayMs { get; set; } = 300;

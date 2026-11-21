@@ -30,7 +30,7 @@ Tests du 21/11/2026 : instance Jellyfin 12.4 jetable, émulateurs Android, Kodi 
 
 | Client | Ce que voit l'utilisateur quand le support est absent |
 |---|---|
-| **Interface web** (navigateur), Jellyfin Media Player | La fenêtre **« Support absent »** s'ouvre au premier plan, environ 1 s après le clic. Derrière, la fenêtre générique « Erreur de lecture » que jellyfin-web affiche toujours quand une lecture est refusée : un second « Compris » la ferme. |
+| **Interface web** (navigateur), Jellyfin Media Player | Une seule fenêtre **« Support absent »**. La fenêtre générique « Erreur de lecture » que jellyfin-web ouvre en même temps est fermée automatiquement par le script JellyUSB (depuis la 1.3). |
 | **App Android 2.7.3**, lecteur « Web » | Comme l'interface web |
 | **App Android 2.7.3**, lecteur intégré (par défaut) | Le lecteur reste noir, sans texte (l'app n'affiche pas d'erreur). En revenant en arrière, la fenêtre **« Support absent »** attend dans l'app. Un seul « Compris ». |
 | **Android TV 0.20.0** | Toast d'environ 3 s : « Insérez le support MOVIES03 : « *Titre* » est absent du serveur. » (texte court, modifiable) |
@@ -99,6 +99,22 @@ alors **tout** le scan de bibliothèque échouer. Depuis la version 1.2, JellyUS
 comme vide : le scan continue et les films du disque absent sont conservés. Les scans restent
 toutefois ralentis par l'attente de l'automontage.
 
+## Tâches planifiées : « En cours d'exécution » et supports USB
+
+Depuis la 1.3, la page *Tableau de bord > Tâches planifiées* commence par un panneau JellyUSB mis à
+jour toutes les 2 s :
+- les tâches en cours d'exécution, avec leur progression ;
+- pour chaque support : **absent**, **libre** (peut être démonté) ou **occupé**, avec ce qui l'occupe :
+  processus ffmpeg et sa fonction probable (recherche des génériques par Intro Skipper, images,
+  normalisation audio, transcodage…), fichier ouvert, durée, lectures en cours.
+
+Seuls les processus de Jellyfin sont visibles. Pour un autre programme : `sudo fuser -vm /mnt/usb/MOVIES02`.
+Les données viennent de `GET /JellyUsb/Activity`, réservé aux administrateurs.
+
+Le panneau et la fermeture automatique de la fenêtre générique viennent d'un petit script que le
+plugin ajoute à la volée à `index.html` de jellyfin-web. Aucun fichier de Jellyfin n'est modifié, et
+le script se désactive dans la page de configuration.
+
 ## Réglages (page de configuration)
 
 | Réglage | Défaut | Rôle |
@@ -108,7 +124,8 @@ toutefois ralentis par l'attente de l'automontage.
 | Titres et messages | voir plus haut | Variables `{title}`, `{mediaId}`, `{path}` |
 | Affichage web | message au premier plan | Autre choix : notre texte dans la fenêtre « Erreur de lecture » de jellyfin-web, qui reste alors recouverte par la fenêtre générique |
 | Textes courts | voir plus haut | Utilisés pour les toasts Android TV (coupés après deux lignes) et les notifications Kodi |
-| Délais web / Android TV | 800 / 300 ms | Pour que notre message arrive après la fenêtre ou le toast d'erreur de l'application |
+| Délais web / Android TV | 300 / 300 ms | Pour que notre message arrive après la fenêtre ou le toast d'erreur de l'application |
+| Script de l'interface web | oui | Fermeture de la fenêtre générique et panneau des tâches (désactivables séparément) |
 | Lire les NFO non UTF‑8 en Windows‑1252 | oui | Lecteur « JellyUSB NFO », placé automatiquement avant « Nfo » |
 | Réparer les textes à l'import | oui | Titres, titre original, résumé, slogan, genres, studios, tags, chapitres, pistes |
 | Compléter depuis TheMovieDb | oui | Si ni le NFO ni le titre original ne donnent la lettre, la tâche demande le titre à TheMovieDb (par identifiant) et ne comble les « � » que s'il correspond partout ailleurs |

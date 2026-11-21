@@ -23,6 +23,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<MediaPresenceChecker>();
         serviceCollection.AddTransient<IStartupFilter, JellyUsbStartupFilter>();
 
+        serviceCollection.AddSingleton<Web.ActivityService>();
         serviceCollection.AddSingleton<ItemTextRepairer>();
         serviceCollection.AddHostedService<ImportRepairService>();
     }

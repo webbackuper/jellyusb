@@ -79,6 +79,30 @@
                     </div>
 
                     <div class="verticalSection">
+                        <h2 class="sectionTitle">Interface web</h2>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableWebEnhancements" type="checkbox" is="emby-checkbox" />
+                                <span>Ajouter le script JellyUSB à l'interface web</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">Ajouté à la volée à index.html (les fichiers de Jellyfin ne sont pas modifiés). Rechargez la page après un changement.</div>
+                        </div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="WebCloseGenericDialog" type="checkbox" is="emby-checkbox" />
+                                <span>Fermer la fenêtre « Erreur de lecture » derrière le message JellyUSB</span>
+                            </label>
+                        </div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="WebTasksPanel" type="checkbox" is="emby-checkbox" />
+                                <span>Afficher « En cours d'exécution » et l'état des supports en haut des Tâches planifiées</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection">
                         <h2 class="sectionTitle">Caractères accentués</h2>
 
                         <div class="checkboxContainer checkboxContainer-withDescription">
@@ -133,7 +157,7 @@
                 var pluginId = '9f8d8889-7b20-47d5-ad9a-37807e42e4ce';
                 var page = document.querySelector('#JellyUsbConfigPage');
                 var texts = ['BasePath', 'MissingMediaHeader', 'MissingMediaText', 'MissingFileHeader', 'MissingFileText', 'ShortMissingMediaText', 'ShortMissingFileText', 'WebDisplayMode'];
-                var checks = ['EnablePlaybackCheck', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
+                var checks = ['EnablePlaybackCheck', 'EnableWebEnhancements', 'WebCloseGenericDialog', 'WebTasksPanel', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
 
                 page.addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();

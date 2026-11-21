@@ -93,9 +93,11 @@ Après l'installation :
 
 Voir [os/README.md](os/README.md) : une règle udev monte tout disque nommé `MOVIES00` à `MOVIES99`
 (NTFS, exFAT, FAT, ext4, xfs, btrfs) sur `/mnt/usb/<label>`, et supprime le dossier au
-débranchement. **C'est recommandé :** avec un automontage (`x-systemd.automount` dans
-`/etc/fstab`), un disque absent répond « No such device » et fait échouer **tous** les scans de
-bibliothèque de Jellyfin 12.4 (« Analyser la médiathèque : échec »).
+débranchement. C'est recommandé : avec un automontage (`x-systemd.automount` dans `/etc/fstab`), un
+disque absent répond « No such device » après plusieurs secondes d'attente. Jellyfin 12.4 laisse
+alors **tout** le scan de bibliothèque échouer. Depuis la version 1.2, JellyUSB traite ce dossier
+comme vide : le scan continue et les films du disque absent sont conservés. Les scans restent
+toutefois ralentis par l'attente de l'automontage.
 
 ## Réglages (page de configuration)
 

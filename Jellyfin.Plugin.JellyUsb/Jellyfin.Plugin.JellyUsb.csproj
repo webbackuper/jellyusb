@@ -16,6 +16,10 @@
     <PackageReference Include="Jellyfin.Model" Version="12.4.0">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
+    <Reference Include="Emby.Server.Implementations">
+      <HintPath>$(JellyfinBinDir)/Emby.Server.Implementations.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="MediaBrowser.XbmcMetadata">
       <HintPath>$(JellyfinBinDir)/MediaBrowser.XbmcMetadata.dll</HintPath>
       <Private>false</Private>

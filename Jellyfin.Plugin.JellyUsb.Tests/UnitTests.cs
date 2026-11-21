@@ -214,3 +214,44 @@ public class MessageTests
         Assert.Equal("Support absent — « Tom &amp; Jerry &lt;3 ♯1 » n'est pas présent sur le serveur. Insérez le support MOVIES03.", shown);
     }
 }
+
+public class ResilientFileSystemTests
+{
+    private static System.Collections.Generic.IEnumerable<string> Throwing(int after, System.Exception ex)
+    {
+        for (var i = 0; i < after; i++)
+        {
+            yield return "f" + i;
+        }
+
+        throw ex;
+    }
+
+    [Fact]
+    public void Device_gone_while_enumerating_ends_the_listing()
+    {
+        var gone = 0;
+        var enodev = new System.IO.IOException("No such device : '/mnt/usb/MOVIES01'", 19);
+        var result = ResilientFileSystem.Guard(() => Throwing(0, enodev), _ => gone++).ToList();
+        Assert.Empty(result);
+        Assert.Equal(1, gone);
+
+        var partial = ResilientFileSystem.Guard(() => Throwing(2, new System.IO.IOException("Transport endpoint is not connected", 107)), _ => gone++).ToList();
+        Assert.Equal(["f0", "f1"], partial);
+    }
+
+    [Fact]
+    public void Device_gone_when_starting_is_empty()
+    {
+        var result = ResilientFileSystem.Guard<string>(() => throw new System.IO.IOException("No such device", 19), _ => { }).ToList();
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Other_errors_still_surface()
+    {
+        Assert.Throws<System.IO.IOException>(() => ResilientFileSystem.Guard(() => Throwing(0, new System.IO.IOException("Input/output error", 5)), _ => { }).ToList());
+        Assert.Throws<System.UnauthorizedAccessException>(() => ResilientFileSystem.Guard(() => Throwing(0, new System.UnauthorizedAccessException()), _ => { }).ToList());
+        Assert.False(ResilientFileSystem.IsDeviceGone(new System.IO.FileNotFoundException("x")));
+    }
+}

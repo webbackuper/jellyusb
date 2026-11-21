@@ -14,6 +14,9 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../Jellyfin.Plugin.JellyUsb/Jellyfin.Plugin.JellyUsb.csproj" />
+    <Reference Include="Emby.Server.Implementations">
+      <HintPath>$(JellyfinBinDir)/Emby.Server.Implementations.dll</HintPath>
+    </Reference>
     <Reference Include="MediaBrowser.XbmcMetadata">
       <HintPath>$(JellyfinBinDir)/MediaBrowser.XbmcMetadata.dll</HintPath>
     </Reference>

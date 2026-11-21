@@ -87,12 +87,13 @@ public class RepairEncodingTask : IScheduledTask
             try
             {
                 var copied = 0;
+                var mediaAbsent = false;
                 if (ItemTextRepairer.HasReplacementChars(item))
                 {
                     var presence = _checker.Check(item.Path, config.BasePath);
                     if (presence.Status is PresenceStatus.MediaAbsent or PresenceStatus.FileMissing)
                     {
-                        waitingForMedia++;
+                        mediaAbsent = true;
                     }
                     else
                     {
@@ -131,9 +132,13 @@ public class RepairEncodingTask : IScheduledTask
                     repaired++;
                 }
 
-                if (outcome.Unresolved.Count > 0)
+                if (ItemTextRepairer.HasReplacementChars(item))
                 {
                     unresolved++;
+                    if (mediaAbsent)
+                    {
+                        waitingForMedia++;
+                    }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -146,7 +151,7 @@ public class RepairEncodingTask : IScheduledTask
 
         _logger.LogInformation(
             "JellyUSB: réparation terminée. {Repaired} élément(s) réparé(s) dont {FromNfo} relu(s) depuis le NFO "
-            + "et {FromOnline} depuis TheMovieDb ; {Unresolved} encore illisible(s) dont {Waiting} dont le support n'est pas branché.",
+            + "et {FromOnline} depuis TheMovieDb ; {Unresolved} encore illisible(s), dont {Waiting} dont le support n'est pas branché (branchez-le puis relancez la tâche).",
             repaired,
             fromNfo,
             fromOnline,

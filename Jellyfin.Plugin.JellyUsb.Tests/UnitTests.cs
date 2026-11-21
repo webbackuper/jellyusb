@@ -255,3 +255,22 @@ public class ResilientFileSystemTests
         Assert.False(ResilientFileSystem.IsDeviceGone(new System.IO.FileNotFoundException("x")));
     }
 }
+
+public class WordFillTests
+{
+    [Theory]
+    [InlineData("On a retrouv� la 7�me compagnie", "On a retrouvé la 7ème compagnie !", "On a retrouvé la 7ème compagnie")]
+    [InlineData("Bridget Jones - L'�ge de raison", "Bridget Jones : L'Âge de raison", "Bridget Jones - L'Âge de raison")]
+    [InlineData("Dans une galaxie pr�s de chez vous, le film", "Dans une galaxie près de chez vous", "Dans une galaxie près de chez vous, le film")]
+    [InlineData("L'incroyable voyage II : � San Francisco", "L'Incroyable Voyage 2 : À San Francisco", "L'incroyable voyage II : À San Francisco")]
+    public void Fills_word_by_word(string broken, string candidate, string expected)
+        => Assert.Equal(expected, Mojibake.FillReplacementChars(broken, ["Other title", candidate]));
+
+    [Fact]
+    public void Ambiguous_or_missing_words_are_left_alone()
+    {
+        Assert.Null(Mojibake.FillReplacementChars("Le c\uFFFDur", ["Le cœur battant", "Le cæur fort"]));
+        Assert.Null(Mojibake.FillReplacementChars("Truth : Le Prix de la v�rit�", ["Truth"]));
+        Assert.Null(Mojibake.FillReplacementChars("� bout", ["Un film — 2010"]));
+    }
+}

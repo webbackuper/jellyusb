@@ -135,7 +135,93 @@ public static class Mojibake
             return result.ToString();
         }
 
-        return null;
+        return FillByWords(normalized, candidates);
+    }
+
+    /// <summary>
+    /// Word by word: each word holding replacement characters must match, ignoring case, exactly one
+    /// spelling among the candidates' words, and the letters found must be letters. Handles candidates
+    /// that differ elsewhere ("Bridget Jones - L'�ge de raison" / "Bridget Jones : L'Âge de raison").
+    /// All or nothing: returns null if any broken word stays unresolved.
+    /// </summary>
+    private static string? FillByWords(string broken, IEnumerable<string?> candidates)
+    {
+        var wordRegex = new Regex("[\\p{L}\\p{N}'’\\uFFFD]+", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+        var candidateWords = new List<string>();
+        foreach (var candidate in candidates)
+        {
+            if (string.IsNullOrEmpty(candidate) || HasReplacementChar(candidate))
+            {
+                continue;
+            }
+
+            foreach (Match m in wordRegex.Matches(candidate.Normalize(NormalizationForm.FormC)))
+            {
+                candidateWords.Add(m.Value);
+            }
+        }
+
+        if (candidateWords.Count == 0)
+        {
+            return null;
+        }
+
+        var failed = false;
+        var result = wordRegex.Replace(broken, m =>
+        {
+            var word = m.Value;
+            if (failed || !word.Contains(Replacement, StringComparison.Ordinal))
+            {
+                return word;
+            }
+
+            var pattern = new StringBuilder("^");
+            foreach (var c in word)
+            {
+                pattern.Append(c == Replacement ? "((?=\\p{L})[^\\x00-\\x7F])" : Regex.Escape(c.ToString()));
+            }
+
+            pattern.Append('$');
+            var regex = new Regex(pattern.ToString(), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+
+            string? fill = null;
+            foreach (var candidateWord in candidateWords)
+            {
+                var match = regex.Match(candidateWord);
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                var filled = new StringBuilder(word.Length);
+                var group = 1;
+                foreach (var c in word)
+                {
+                    filled.Append(c == Replacement ? match.Groups[group++].Value : c);
+                }
+
+                var value = filled.ToString();
+                if (fill is null)
+                {
+                    fill = value;
+                }
+                else if (!string.Equals(fill, value, StringComparison.OrdinalIgnoreCase))
+                {
+                    fill = null;
+                    break; // two different spellings: ambiguous
+                }
+            }
+
+            if (fill is null)
+            {
+                failed = true;
+                return word;
+            }
+
+            return fill;
+        });
+
+        return failed || HasReplacementChar(result) ? null : result;
     }
 
     private static string FixOnePass(string text)

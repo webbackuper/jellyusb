@@ -168,3 +168,8 @@ Exemple :
 ```bash
 python3 tests/integration/test-server.py start /tmp/jf-test /tmp/usb-test
 ```
+
+## Licence
+
+JellyUSB est distribué sous licence **GNU GPL v3** (voir [LICENSE](LICENSE)), comme Jellyfin et le
+modèle officiel de plugin.

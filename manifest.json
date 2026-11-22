@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.4.1.0",
+        "changelog": "JellyUSB apparaît dans le menu du tableau de bord (Extensions > JellyUSB) et ouvre directement sa page : titre, description, image, panneau de droite (activation, désinstallation, statut, version, développeur, dépôt) et deux onglets, Paramètres et Historique des versions. Nouvelle image du plugin et nouveaux fonds MediaID : des disques 2,5\" en boîtier USB.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.4.1.0/jellyusb_1.4.1.0.zip",
+        "checksum": "a5056c0c2b8dc2a7e137f865ad8b97ab",
+        "timestamp": "2026-11-22T00:10:13Z"
+      },
+      {
         "version": "1.4.0.0",
         "changelog": "Vue « MediaID » dans le menu des vues des bibliothèques de films : une ligne par support USB avec son image de fond, une page par support avec tous ses films, et retour vers la liste. Correctif : la conversion des NFO Windows-1252 utilise le dossier cache du plugin (la tâche de réparation pouvait ne rien réparer si /tmp/jellyfin appartenait à un autre utilisateur).",
         "targetAbi": "12.4.0.0",

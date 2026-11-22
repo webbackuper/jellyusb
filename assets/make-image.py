@@ -3,8 +3,8 @@
 
     python3 assets/make-image.py            -> assets/jellyusb.png
 
-Three USB drives fanned out: two plugged in (one with a green check), one absent (dashed,
-amber badge). Drawn at 2x and downscaled for clean edges. Needs Pillow.
+Three 2.5" hard disks in USB enclosures, fanned out: two plugged in with their cable (one with a
+green check), one absent (dashed, unplugged, amber badge). Drawn at 2x and downscaled for clean edges. Needs Pillow.
 """
 import os
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -74,45 +74,87 @@ def dashed_rounded_rect(draw, box, radius, color, width, dash, gap):
         draw.arc((cx - r, cy - r, cx + r, cy + r), start, start + 90, fill=color, width=width)
 
 
-def drive(label, top, bottom, ghost=False):
-    """One USB stick, connector up. Returns an RGBA image."""
-    bw, bh = s(176), s(340)          # body
-    cw, ch = s(112), s(120)          # connector
-    pad = s(30)
-    img = Image.new("RGBA", (bw + 2 * pad, ch + bh + 2 * pad), (0, 0, 0, 0))
-    ox, oy = pad, pad
-    cx0 = ox + (bw - cw) // 2
+def bezier(p0, p1, p2, p3, n=48):
+    pts = []
+    for i in range(n + 1):
+        t = i / n
+        a, b, c, d = (1 - t) ** 3, 3 * t * (1 - t) ** 2, 3 * t * t * (1 - t), t ** 3
+        pts.append((a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1]))
+    return pts
+
+
+def drive(label, top, bottom, ghost=False, cable_bend=1):
+    """One 2.5" hard disk in a USB enclosure, port at the bottom with its cable. Returns an RGBA image."""
+    bw, bh = s(226), s(332)          # enclosure (2.5" enclosures are about 80 x 120 mm)
+    rad = s(20)
+    pad = s(40)
+    cable_len = s(190)
+    img = Image.new("RGBA", (bw + 2 * pad + s(120), bh + cable_len + 2 * pad), (0, 0, 0, 0))
+    ox, oy = pad + s(60), pad
+    cx = ox + bw // 2
+    plug_w, plug_h = s(64), s(40)
+    plug_y = oy + bh - s(4)
 
     if ghost:
         d = ImageDraw.Draw(img)
-        faint = Image.new("RGBA", (bw, bh), top + (40,))
-        img.alpha_composite(Image.composite(faint, Image.new("RGBA", (bw, bh), (0, 0, 0, 0)), rounded_mask((bw, bh), s(34))), (ox, oy + ch))
+        faint = Image.new("RGBA", (bw, bh), top + (38,))
+        img.alpha_composite(Image.composite(faint, Image.new("RGBA", (bw, bh), (0, 0, 0, 0)), rounded_mask((bw, bh), rad)), (ox, oy))
         line = top + (230,)
-        dashed_rounded_rect(d, (cx0, oy, cx0 + cw, oy + ch - s(4)), s(10), line, s(4), s(16), s(11))
-        dashed_rounded_rect(d, (ox, oy + ch, ox + bw, oy + ch + bh), s(34), line, s(5), s(20), s(13))
+        dashed_rounded_rect(d, (ox, oy, ox + bw, oy + bh), rad, line, s(5), s(20), s(13))
+        # empty port, no cable: the disk is not plugged in
+        d.rounded_rectangle((cx - s(26), oy + bh - s(22), cx + s(26), oy + bh - s(8)), radius=s(4), outline=line, width=s(3))
     else:
-        # connector: brushed metal
-        metal = gradient((cw, ch + s(14)), (226, 230, 238), (150, 158, 176), horizontal=True)
-        img.alpha_composite(Image.composite(metal, Image.new("RGBA", metal.size, (0, 0, 0, 0)), rounded_mask(metal.size, s(10))), (cx0, oy))
-        d = ImageDraw.Draw(img)
-        for hx in (cx0 + s(24), cx0 + cw - s(24) - s(22)):
-            d.rounded_rectangle((hx, oy + s(30), hx + s(22), oy + s(56)), radius=s(3), fill=(70, 78, 98, 255))
-        # body
-        body = gradient((bw, bh), top, bottom)
-        img.alpha_composite(Image.composite(body, Image.new("RGBA", (bw, bh), (0, 0, 0, 0)), rounded_mask((bw, bh), s(34))), (ox, oy + ch))
-        # gloss on the left
+        # cable first (under the plug), curving away
+        cable = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        cd = ImageDraw.Draw(cable)
+        p0 = (cx, plug_y + plug_h - s(4))
+        p3 = (cx + cable_bend * s(110), oy + bh + cable_len + pad)
+        pts = bezier(p0, (cx, p0[1] + s(90)), (p3[0], p3[1] - s(120)), p3)
+        cd.line(pts, fill=(28, 30, 44, 255), width=s(20), joint="curve")
+        cd.line([(x - s(3), y) for (x, y) in pts], fill=(92, 98, 122, 255), width=s(5), joint="curve")
+        img.alpha_composite(cable)
+        # enclosure: rim, then the slightly lighter face
+        body = gradient((bw, bh), bottom, top)
+        img.alpha_composite(Image.composite(body, Image.new("RGBA", (bw, bh), (0, 0, 0, 0)), rounded_mask((bw, bh), rad)), (ox, oy))
+        inset = s(11)
+        fw, fh = bw - 2 * inset, bh - 2 * inset
+        face = gradient((fw, fh), tuple(min(255, c + 22) for c in top), bottom)
+        img.alpha_composite(Image.composite(face, Image.new("RGBA", (fw, fh), (0, 0, 0, 0)), rounded_mask((fw, fh), rad - inset)), (ox + inset, oy + inset))
+        # soft gloss across the top of the face
         gloss = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
-        ImageDraw.Draw(gloss).rounded_rectangle((s(14), s(14), s(62), bh - s(70)), radius=s(22), fill=(255, 255, 255, 48))
-        img.alpha_composite(gloss.filter(ImageFilter.GaussianBlur(s(4))), (ox, oy + ch))
+        ImageDraw.Draw(gloss).rounded_rectangle((inset + s(10), inset + s(8), bw - inset - s(10), s(96)), radius=s(18), fill=(255, 255, 255, 34))
+        img.alpha_composite(gloss.filter(ImageFilter.GaussianBlur(s(6))), (ox, oy))
         d = ImageDraw.Draw(img)
-        # lanyard hole
-        hx, hy = ox + bw // 2, oy + ch + bh - s(36)
-        d.ellipse((hx - s(13), hy - s(13), hx + s(13), hy + s(13)), fill=(0, 0, 0, 0), outline=(255, 255, 255, 90), width=s(4))
+        # embossed hard-disk platter with its read arm: says "disk", not "phone"
+        # (drawn on a layer: ImageDraw would replace the pixels' alpha instead of blending)
+        emboss = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        e = ImageDraw.Draw(emboss)
+        pcx, pcy, pr = cx, oy + s(72), s(40)
+        e.ellipse((pcx - pr, pcy - pr, pcx + pr, pcy + pr), fill=(255, 255, 255, 28), outline=(255, 255, 255, 110), width=s(4))
+        e.ellipse((pcx - s(22), pcy - s(22), pcx + s(22), pcy + s(22)), outline=(255, 255, 255, 70), width=s(2))
+        e.ellipse((pcx - s(6), pcy - s(6), pcx + s(6), pcy + s(6)), fill=(255, 255, 255, 150))
+        ax, ay = pcx + s(52), pcy + s(30)
+        e.line((ax, ay, pcx + s(12), pcy - s(14)), fill=(255, 255, 255, 150), width=s(6), joint="curve")
+        e.ellipse((ax - s(7), ay - s(7), ax + s(7), ay + s(7)), fill=(255, 255, 255, 150))
+        img.alpha_composite(emboss)
+        d = ImageDraw.Draw(img)
+        # activity LED strip above the port
+        lx, ly = cx, oy + bh - s(44)
+        led = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        ImageDraw.Draw(led).rounded_rectangle((lx - s(30), ly - s(10), lx + s(30), ly + s(10)), radius=s(10), fill=(120, 255, 170, 120))
+        img.alpha_composite(led.filter(ImageFilter.GaussianBlur(s(8))))
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle((lx - s(18), ly - s(3), lx + s(18), ly + s(3)), radius=s(3), fill=(150, 255, 190, 255))
+        # USB plug in the port
+        plug = gradient((plug_w, plug_h), (70, 74, 92), (30, 32, 46))
+        img.alpha_composite(Image.composite(plug, Image.new("RGBA", plug.size, (0, 0, 0, 0)), rounded_mask(plug.size, s(8))), (cx - plug_w // 2, plug_y))
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle((cx - plug_w // 2 + s(8), plug_y + s(6), cx + plug_w // 2 - s(8), plug_y + s(10)), radius=s(2), fill=(140, 146, 170, 255))
 
     # label
     d = ImageDraw.Draw(img)
-    lx0, ly0 = ox + s(14), oy + ch + s(112)
-    lx1, ly1 = ox + bw - s(14), ly0 + s(64)
+    lx0, ly0 = ox + s(26), oy + s(130)
+    lx1, ly1 = ox + bw - s(26), ly0 + s(64)
     font = ImageFont.truetype(FONT_MONO, s(27))
     if ghost:
         d.rounded_rectangle((lx0, ly0, lx1, ly1), radius=s(10), outline=top + (200,), width=s(3))
@@ -122,14 +164,6 @@ def drive(label, top, bottom, ghost=False):
         fill = (32, 30, 52, 255)
     tw = d.textlength(label, font=font)
     d.text(((lx0 + lx1 - tw) / 2, (ly0 + ly1) / 2), label, font=font, fill=fill, anchor="lm")
-    if not ghost:
-        # activity LED
-        lx, ly = ox + bw // 2, oy + ch + s(60)
-        led = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        ImageDraw.Draw(led).ellipse((lx - s(16), ly - s(16), lx + s(16), ly + s(16)), fill=(120, 255, 170, 120))
-        img.alpha_composite(led.filter(ImageFilter.GaussianBlur(s(8))))
-        d = ImageDraw.Draw(img)
-        d.ellipse((lx - s(7), ly - s(7), lx + s(7), ly + s(7)), fill=(140, 255, 185, 255))
     return img
 
 
@@ -179,9 +213,9 @@ def main():
     canvas.alpha_composite(dots)
 
     # drives: absent one at the back right, then left, then the front one
-    place(canvas, drive("MOVIES02", (90, 220, 230), (90, 220, 230), ghost=True), (s(1112), s(372)), -17, shadow=False)
-    place(canvas, drive("MOVIES00", hexrgb("#c07bd6"), hexrgb("#5d2386")), (s(772), s(386)), 17)
-    place(canvas, drive("MOVIES01", hexrgb("#1fb8ee"), hexrgb("#0b4f93")), (s(944), s(350)), 0)
+    place(canvas, drive("MOVIES02", (90, 220, 230), (90, 220, 230), ghost=True), (s(1094), s(400)), -15, shadow=False)
+    place(canvas, drive("MOVIES00", hexrgb("#c07bd6"), hexrgb("#5d2386"), cable_bend=-1), (s(770), s(420)), 15)
+    place(canvas, drive("MOVIES01", hexrgb("#1fb8ee"), hexrgb("#0b4f93")), (s(944), s(388)), 0)
 
     canvas.alpha_composite(badge("ok"), (s(1000), s(108)))
     canvas.alpha_composite(badge("warn"), (s(1168), s(112)))

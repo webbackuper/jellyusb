@@ -6,8 +6,53 @@
 </head>
 <body>
     <div id="JellyUsbConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox,emby-textarea">
+        <style>
+            #JellyUsbConfigPage .jusb-head{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1.5em;align-items:start;margin:1em 0 1.5em}
+            #JellyUsbConfigPage .jusb-head h1{margin:0 0 .5em}
+            #JellyUsbConfigPage .jusb-head p{margin:0;max-width:80ch;line-height:1.5}
+            #JellyUsbConfigPage .jusb-img{width:100%;border-radius:.4em;display:block}
+            #JellyUsbConfigPage .jusb-body{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1.5em;align-items:start}
+            #JellyUsbConfigPage .jusb-tabs{display:flex;gap:.3em;border-bottom:1px solid rgba(128,128,128,.35);margin-bottom:1.2em}
+            #JellyUsbConfigPage .jusb-tab{background:none;border:0;border-bottom:3px solid transparent;color:inherit;font:inherit;padding:.6em 1em;cursor:pointer;opacity:.75}
+            #JellyUsbConfigPage .jusb-tab.active{border-bottom-color:#00a4dc;opacity:1;font-weight:600}
+            #JellyUsbConfigPage .jusb-side{display:flex;flex-direction:column;gap:.8em}
+            #JellyUsbConfigPage .jusb-side .emby-button{margin:0;width:100%}
+            #JellyUsbConfigPage .jusb-details{width:100%;border-collapse:collapse}
+            #JellyUsbConfigPage .jusb-details th,#JellyUsbConfigPage .jusb-details td{text-align:left;padding:.55em .4em;border-bottom:1px solid rgba(128,128,128,.25);vertical-align:top}
+            #JellyUsbConfigPage .jusb-details th{font-weight:600;white-space:nowrap;width:1%;padding-right:1em}
+            #JellyUsbConfigPage .jusb-details a{color:inherit;word-break:break-all}
+            #JellyUsbConfigPage .jusb-rev{border:1px solid rgba(128,128,128,.3);border-radius:.4em;padding:.8em 1em;margin-bottom:.8em}
+            #JellyUsbConfigPage .jusb-rev-head{display:flex;align-items:center;gap:.8em;flex-wrap:wrap}
+            #JellyUsbConfigPage .jusb-rev-head b{font-size:1.1em}
+            #JellyUsbConfigPage .jusb-rev-head .emby-button{margin:0 0 0 auto;padding:.3em 1em}
+            #JellyUsbConfigPage .jusb-rev-badge{background:#00a4dc;color:#fff;border-radius:1em;padding:.1em .7em;font-size:.85em}
+            #JellyUsbConfigPage .jusb-rev-log{margin:.6em 0 0;white-space:pre-wrap;line-height:1.5;opacity:.9}
+            #JellyUsbConfigPage .jusb-muted{opacity:.65}
+            @media (max-width:1200px){
+                #JellyUsbConfigPage .jusb-head,#JellyUsbConfigPage .jusb-body{grid-template-columns:minmax(0,1fr)}
+                #JellyUsbConfigPage .jusb-img{display:none}
+                #JellyUsbConfigPage .jusb-side{order:-1}
+            }
+        </style>
         <div data-role="content">
             <div class="content-primary">
+                <div class="jusb-head">
+                    <div>
+                        <h1 id="JusbName">JellyUSB</h1>
+                        <p id="JusbDescription"></p>
+                    </div>
+                    <img id="JusbImage" class="jusb-img" alt="JellyUSB" hidden />
+                </div>
+                <div class="jusb-body">
+                <div class="jusb-main">
+                <div class="jusb-tabs" role="tablist">
+                    <button type="button" class="jusb-tab active" role="tab" data-tab="settings">Paramètres</button>
+                    <button type="button" class="jusb-tab" role="tab" data-tab="history">Historique des versions</button>
+                </div>
+                <div data-panel="history" hidden>
+                    <div id="JusbRevisions"><p class="jusb-muted">Chargement…</p></div>
+                </div>
+                <div data-panel="settings">
                 <form id="JellyUsbConfigForm">
                     <div class="verticalSection">
                         <h2 class="sectionTitle">Vérification avant lecture</h2>
@@ -160,6 +205,28 @@
                         </button>
                     </div>
                 </form>
+                </div>
+                </div>
+                <aside class="jusb-side">
+                    <div class="checkboxContainer" style="margin:0">
+                        <label class="emby-checkbox-label">
+                            <input id="JusbEnabled" type="checkbox" is="emby-checkbox" />
+                            <span>Activer l'extension</span>
+                        </label>
+                    </div>
+                    <button is="emby-button" type="button" id="JusbUninstall" class="raised emby-button" style="background:#c0392b;color:#fff">
+                        <span>Désinstaller</span>
+                    </button>
+                    <table class="jusb-details">
+                        <tbody>
+                            <tr><th>Statut</th><td id="JusbStatus">…</td></tr>
+                            <tr><th>Version</th><td id="JusbVersion">…</td></tr>
+                            <tr><th>Développeur</th><td id="JusbOwner">…</td></tr>
+                            <tr><th>Dépôt</th><td id="JusbRepository">…</td></tr>
+                        </tbody>
+                    </table>
+                </aside>
+                </div>
             </div>
         </div>
         <script type="text/javascript">
@@ -169,7 +236,140 @@
                 var texts = ['BasePath', 'MissingMediaHeader', 'MissingMediaText', 'MissingFileHeader', 'MissingFileText', 'ShortMissingMediaText', 'ShortMissingFileText', 'WebDisplayMode', 'WebMediaViewName'];
                 var checks = ['EnablePlaybackCheck', 'EnableWebEnhancements', 'WebCloseGenericDialog', 'WebTasksPanel', 'WebMediaView', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
 
+                var pluginName = 'JellyUSB';
+                var installed = null;   // entry of GET /Plugins
+                var pkg = null;         // entry of GET /Packages/JellyUSB
+
+                function esc(v) {
+                    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                    });
+                }
+
+                var STATUS = {
+                    Active: 'Actif', Restart: 'Redémarrage de Jellyfin nécessaire', Disabled: 'Désactivé',
+                    NotSupported: 'Non pris en charge', Malfunctioned: 'En erreur', Superceded: 'Remplacé par une autre version',
+                    Superseded: 'Remplacé par une autre version', Deleted: 'Désinstallé (au prochain redémarrage)'
+                };
+
+                function showTab(name) {
+                    page.querySelectorAll('.jusb-tab').forEach(function (t) {
+                        var on = t.getAttribute('data-tab') === name;
+                        t.classList.toggle('active', on);
+                        t.setAttribute('aria-selected', on ? 'true' : 'false');
+                    });
+                    page.querySelectorAll('[data-panel]').forEach(function (p) {
+                        p.hidden = p.getAttribute('data-panel') !== name;
+                    });
+                }
+                page.querySelectorAll('.jusb-tab').forEach(function (t) {
+                    t.addEventListener('click', function () { showTab(t.getAttribute('data-tab')); });
+                });
+
+                function versionDate(v) {
+                    if (!v.timestamp) { return ''; }
+                    var d = new Date(v.timestamp);
+                    return isNaN(d) ? '' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                }
+
+                function renderSide() {
+                    var enabled = page.querySelector('#JusbEnabled');
+                    enabled.checked = !!installed && installed.Status !== 'Disabled';
+                    enabled.disabled = !installed || installed.Status === 'Restart';
+                    page.querySelector('#JusbUninstall').hidden = !installed || installed.CanUninstall === false;
+                    page.querySelector('#JusbStatus').textContent = installed ? (STATUS[installed.Status] || installed.Status) : 'Non installé';
+                    page.querySelector('#JusbVersion').textContent = installed ? installed.Version : '—';
+                    page.querySelector('#JusbOwner').textContent = (pkg && pkg.owner) || 'webbackuper';
+                    var last = pkg && pkg.versions && pkg.versions[0];
+                    var repo = page.querySelector('#JusbRepository');
+                    if (last && last.repositoryUrl) {
+                        repo.innerHTML = '<a href="' + esc(last.repositoryUrl) + '" target="_blank" rel="noopener">' + esc(last.repositoryName || last.repositoryUrl) + '</a>';
+                    } else {
+                        repo.textContent = '—';
+                    }
+                    var description = (installed && installed.Description) || (pkg && (pkg.description || pkg.overview)) || '';
+                    page.querySelector('#JusbDescription').textContent = description;
+                    var img = page.querySelector('#JusbImage');
+                    if (installed && installed.HasImage) {
+                        img.onload = function () { img.hidden = false; };
+                        img.onerror = function () { img.hidden = true; };
+                        img.src = ApiClient.getUrl('Plugins/' + installed.Id + '/' + installed.Version + '/Image');
+                    }
+                }
+
+                function renderRevisions() {
+                    var box = page.querySelector('#JusbRevisions');
+                    var versions = (pkg && pkg.versions) || [];
+                    if (!versions.length) {
+                        box.innerHTML = '<p class="jusb-muted">Historique indisponible : le dépôt de plugins JellyUSB n\'est pas joignable ou pas déclaré (Extensions > Dépôts).</p>';
+                        return;
+                    }
+                    box.innerHTML = versions.map(function (v, i) {
+                        var current = installed && installed.Version === v.version;
+                        return '<div class="jusb-rev"><div class="jusb-rev-head"><b>' + esc(v.version) + '</b>'
+                            + '<span class="jusb-muted">' + esc(versionDate(v)) + '</span>'
+                            + (current ? '<span class="jusb-rev-badge">installée</span>' : '')
+                            + (current ? '' : '<button is="emby-button" type="button" class="raised emby-button" data-install="' + i + '"><span>Installer</span></button>')
+                            + '</div><p class="jusb-rev-log">' + esc(v.changelog || '') + '</p></div>';
+                    }).join('');
+                    box.querySelectorAll('[data-install]').forEach(function (b) {
+                        b.addEventListener('click', function () {
+                            var v = versions[parseInt(b.getAttribute('data-install'), 10)];
+                            if (!window.confirm('Installer JellyUSB ' + v.version + ' ? Jellyfin devra être redémarré.')) { return; }
+                            Dashboard.showLoadingMsg();
+                            ApiClient.ajax({
+                                type: 'POST',
+                                url: ApiClient.getUrl('Packages/Installed/' + encodeURIComponent(pluginName),
+                                    { assemblyGuid: pluginId, version: v.version, repositoryUrl: v.repositoryUrl })
+                            }).then(function () {
+                                Dashboard.hideLoadingMsg();
+                                Dashboard.alert('JellyUSB ' + v.version + ' est téléchargée. Redémarrez Jellyfin pour l\'utiliser.');
+                            }, function () {
+                                Dashboard.hideLoadingMsg();
+                                Dashboard.alert('L\'installation de JellyUSB ' + v.version + ' a échoué.');
+                            });
+                        });
+                    });
+                }
+
+                function loadPluginInfo() {
+                    var plugins = ApiClient.getInstalledPlugins().then(function (list) {
+                        installed = (list || []).filter(function (x) { return x.Id.replace(/-/g, '') === pluginId.replace(/-/g, ''); })[0] || null;
+                    }, function () { installed = null; });
+                    var packages = ApiClient.getJSON(ApiClient.getUrl('Packages/' + encodeURIComponent(pluginName), { assemblyGuid: pluginId })).then(function (p) {
+                        pkg = p || null;
+                    }, function () { pkg = null; });
+                    return Promise.all([plugins, packages]).then(function () {
+                        renderSide();
+                        renderRevisions();
+                    });
+                }
+
+                page.querySelector('#JusbEnabled').addEventListener('change', function (e) {
+                    if (!installed) { return; }
+                    var action = e.target.checked ? 'Enable' : 'Disable';
+                    Dashboard.showLoadingMsg();
+                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Plugins/' + installed.Id + '/' + installed.Version + '/' + action) }).then(function () {
+                        return loadPluginInfo();
+                    }, function () {
+                        Dashboard.alert(action === 'Enable' ? 'Impossible d\'activer l\'extension.' : 'Impossible de désactiver l\'extension.');
+                        return loadPluginInfo();
+                    }).then(function () { Dashboard.hideLoadingMsg(); });
+                });
+
+                page.querySelector('#JusbUninstall').addEventListener('click', function () {
+                    if (!installed || !window.confirm('Désinstaller JellyUSB ? L\'extension sera retirée au prochain redémarrage de Jellyfin.')) { return; }
+                    Dashboard.showLoadingMsg();
+                    ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('Plugins/' + installed.Id + '/' + installed.Version) }).then(function () {
+                        return loadPluginInfo();
+                    }, function () {
+                        Dashboard.alert('La désinstallation a échoué.');
+                    }).then(function () { Dashboard.hideLoadingMsg(); });
+                });
+
                 page.addEventListener('pageshow', function () {
+                    showTab('settings');
+                    loadPluginInfo();
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                         texts.forEach(function (k) { page.querySelector('#' + k).value = config[k] || ''; });

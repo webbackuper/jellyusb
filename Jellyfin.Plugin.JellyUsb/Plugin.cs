@@ -47,7 +47,12 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             new PluginPageInfo
             {
                 Name = Name,
-                EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
+                DisplayName = Name,
+                EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html",
+                // Listed in the dashboard menu, under Plugins, like the other configurable plugins.
+                EnableInMainMenu = true,
+                MenuSection = "Plugins",
+                MenuIcon = "usb"
             }
         ];
     }

@@ -131,7 +131,7 @@ Dans l'interface web, ouvrez une bibliothèque de films et choisissez **MediaID*
   Le bouton Précédent du navigateur marche aussi, y compris depuis la fiche d'un film. Choisir une
   autre vue dans le menu (Films, Genres…) quitte la vue MediaID.
 
-L'image de fond est générée par le plugin : une clé USB étiquetée avec le MediaID, sur un dégradé dont
+L'image de fond est générée par le plugin : un boîtier de disque 2,5" USB étiqueté avec le MediaID, sur un dégradé dont
 la couleur dépend du numéro du support (deux supports voisins ont des couleurs bien différentes). Elle
 est servie par `GET /JellyUsb/Media/{MediaID}/Background` (SVG).
 
@@ -144,6 +144,13 @@ La vue n'existe que dans l'interface web, et dans les applications qui l'affiche
 Player, jellyfin-android). Les applications natives (Android TV, Kodi, Swiftfin…) ne la proposent pas.
 
 ## Réglages (page de configuration)
+
+La page s'ouvre directement depuis le menu de gauche du tableau de bord, section **Extensions >
+JellyUSB**. Elle reprend la fiche de l'extension :
+- en haut, le titre, la description et l'image ;
+- à droite, l'activation, la désinstallation, le statut, la version, le développeur et le dépôt ;
+- au centre, deux onglets : **Paramètres** et **Historique des versions**. L'historique liste chaque
+  version avec sa date et ses nouveautés, et permet d'en installer une autre.
 
 | Réglage | Défaut | Rôle |
 |---|---|---|

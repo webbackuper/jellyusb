@@ -11,7 +11,9 @@ The instance uses its own data/config/cache/log folders, port 18096 and no auto-
 A test account is created with a random password, stored in <instance>/credentials.json.
 """
 import json
+import glob
 import os
+import re
 import secrets
 import shutil
 import signal
@@ -67,8 +69,18 @@ def wait_up(timeout=180):
     raise SystemExit("server did not start")
 
 
+def plugin_version():
+    """The version being built (Directory.Build.props), so the instance looks like a real install."""
+    with open(os.path.join(REPO, "Directory.Build.props"), encoding="utf-8") as f:
+        m = re.search(r"<Version>([^<]+)</Version>", f.read())
+    return m.group(1) if m else "1.0.0.0"
+
+
 def install_plugin(instance):
-    dest = os.path.join(instance, "data", "plugins", "JellyUSB_1.0.0.0")
+    version = plugin_version()
+    for old in glob.glob(os.path.join(instance, "data", "plugins", "JellyUSB_*")):
+        shutil.rmtree(old, ignore_errors=True)
+    dest = os.path.join(instance, "data", "plugins", "JellyUSB_" + version)
     shutil.rmtree(dest, ignore_errors=True)
     os.makedirs(dest)
     shutil.copy(os.path.join(PLUGIN_BUILD, "Jellyfin.Plugin.JellyUsb.dll"), dest)
@@ -76,7 +88,7 @@ def install_plugin(instance):
     meta = {
         "category": "General", "guid": PLUGIN_ID, "name": "JellyUSB",
         "description": "test build", "overview": "test build", "owner": "webbackuper",
-        "targetAbi": "12.4.0.0", "timestamp": "2026-11-21T00:00:00Z", "version": "1.0.0.0",
+        "targetAbi": "12.4.0.0", "timestamp": "2026-11-21T00:00:00Z", "version": version,
         "status": "Active", "autoUpdate": False, "imagePath": "jellyusb.png", "assemblies": ["Jellyfin.Plugin.JellyUsb.dll"],
     }
     with open(os.path.join(dest, "meta.json"), "w") as f:

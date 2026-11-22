@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.5.0.0",
+        "changelog": "Fiche Android TV : le résumé d'un film commence par son disque et son état (« 🟢 Disque MOVIES03 branché » ou « 🔴 Disque MOVIES03 absent : branchez-le pour lire ce film »). Rien n'est enregistré : seul ce que reçoit la TV change.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.5.0.0/jellyusb_1.5.0.0.zip",
+        "checksum": "209e1519327aeff6a6f3646b931896d4",
+        "timestamp": "2026-11-22T01:15:37Z"
+      },
+      {
         "version": "1.4.3.0",
         "changelog": "Protection de la bibliothèque : un disque débranché, même pendant un scan, ne fait plus jamais retirer ses films (avant, ils étaient ré-importés au rebranchement). Un support absent depuis un moment est sauté sans erreur dans le journal.",
         "targetAbi": "12.4.0.0",

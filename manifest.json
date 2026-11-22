@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.4.2.0",
+        "changelog": "Bouton « Media » dans le bandeau du haut, après les bibliothèques, avec une icône de disque dur : il ouvre la vue par MediaID et s'affiche comme les boutons de Jellyfin. Les fonds MediaID se mettent à jour à chaque nouvelle version (fini l'ancienne image en cache).",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.4.2.0/jellyusb_1.4.2.0.zip",
+        "checksum": "9e66a00690e7e3977fea0002d01888d2",
+        "timestamp": "2026-11-22T00:34:19Z"
+      },
+      {
         "version": "1.4.1.0",
         "changelog": "JellyUSB apparaît dans le menu du tableau de bord (Extensions > JellyUSB) et ouvre directement sa page : titre, description, image, panneau de droite (activation, désinstallation, statut, version, développeur, dépôt) et deux onglets, Paramètres et Historique des versions. Nouvelle image du plugin et nouveaux fonds MediaID : des disques 2,5\" en boîtier USB.",
         "targetAbi": "12.4.0.0",

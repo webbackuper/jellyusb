@@ -27,7 +27,7 @@ PORT = int(os.environ.get("JELLYUSB_TEST_PORT", "18096"))
 URL = f"http://127.0.0.1:{PORT}"
 JF_BIN = "/usr/lib/jellyfin/bin/jellyfin"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PLUGIN_BUILD = os.path.join(REPO, "Jellyfin.Plugin.JellyUsb", "bin", "Release", "net10.0")
+PLUGIN_BUILD = os.environ.get("JELLYUSB_PLUGIN_BUILD") or os.path.join(REPO, "Jellyfin.Plugin.JellyUsb", "bin", "Release", "net10.0")
 PLUGIN_ID = "9f8d8889-7b20-47d5-ad9a-37807e42e4ce"
 CLIENT = 'MediaBrowser Client="jellyusb-test", Device="script", DeviceId="jellyusb-test-script", Version="1.0"'
 

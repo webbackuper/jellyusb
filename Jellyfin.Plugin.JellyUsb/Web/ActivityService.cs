@@ -121,22 +121,7 @@ public class ActivityService
     /// point that is not mounted is absent and is not touched (touching it would try to mount it).
     /// </summary>
     internal static bool IsPresent(MountTable mountTable, string path)
-    {
-        var state = mountTable.GetState(path);
-        if (state != MountState.NotAMountPoint)
-        {
-            return state == MountState.Mounted;
-        }
-
-        try
-        {
-            return Directory.Exists(path) && Directory.EnumerateFileSystemEntries(path).Any();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return false;
-        }
-    }
+        => new LibraryGuard(mountTable, () => Plugin.CurrentConfiguration.BasePath).GetRootState(path) == MediaRootState.Present;
 
     private static void ScanProcesses(string basePath, Action<string?, MediaUser> add)
     {

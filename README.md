@@ -8,6 +8,8 @@ du support qui a servi à l'import (`MOVIES00`, `MOVIES01`… `MOVIES99`).
 
 1. **La navigation ne change pas.** Bibliothèque et collections restent consultables même quand les
    disques sont débranchés.
+   **Un disque absent ne fait jamais retirer ses films**, même débranché pendant un scan (voir
+   « Protection de la bibliothèque »).
 2. **Vérification avant lecture.** Au moment de lancer un film situé sous `/mnt/usb/`, le serveur
    vérifie que le support est branché et que le fichier existe. Sinon la lecture est bloquée et le
    client affiche :
@@ -26,6 +28,27 @@ du support qui a servi à l'import (`MOVIES00`, `MOVIES01`… `MOVIES99`).
 
 Le plugin ne modifie **jamais** les fichiers des disques, ne surveille pas les branchements et ne
 lance aucun scan de lui-même.
+
+## Protection de la bibliothèque
+
+Pendant un scan, Jellyfin retire les films d'un dossier qui revient sans eux. Or il lit un dossier
+introuvable comme un dossier vide. Un disque débranché **pendant** un scan, après la lecture de la
+racine de son support, faisait donc retirer ses films. Ils revenaient au rebranchement, mais
+ré-importés : nouvelle date d'ajout et nouvelle analyse. Ce cas a été reproduit avec la 1.4.2.
+
+Depuis la 1.4.3, sous le chemin de base :
+
+| Cas | Ce que le plugin répond à Jellyfin | Résultat |
+|---|---|---|
+| Racine d'un support absent depuis un moment (`/mnt/usb/MOVIES03` vide) | un dossier vide | Jellyfin saute ce dossier de bibliothèque, sans erreur dans le journal |
+| Racine d'un support qui vient de disparaître (moins de 15 min) | une erreur d'entrée-sortie | Jellyfin n'y touche pas pendant ce scan |
+| Tout dossier à l'intérieur d'un support absent, qui disparaît ou qui renvoie « No such device » | une erreur d'entrée-sortie, jamais une liste vide ou tronquée | Jellyfin garde les films |
+| Bibliothèque montée sur `/mnt/usb` lui-même, support absent | une erreur d'entrée-sortie | les films du support sont gardés |
+| Dossier vraiment supprimé d'un disque branché | « dossier introuvable », comme Jellyfin | le film est retiré, normalement |
+
+Les chemins hors du chemin de base ne sont pas concernés. Le script
+`tests/integration/unplug-checks.py` rejoue le scénario : il débranche un support, fait relire son
+dossier, lance un scan complet, puis rebranche le support.
 
 ## Comportement selon le client (testé)
 
@@ -211,6 +234,11 @@ main ou par une actualisation depuis TMDb.
 - **Messages** : `ISessionManager.SendMessageCommand` (commande `DisplayMessage`) vers la session du
   client, que le plugin retrouve par son `DeviceId`. Le client est reconnu au champ `Client` de
   l'en-tête d'authentification.
+- **Protection de la bibliothèque** : `ResilientFileSystem` remplace le système de fichiers de
+  Jellyfin et passe toute lecture de dossier sous le chemin de base par `LibraryGuard`. Cette classe
+  détermine l'état du support (table des montages, dossier vide ou pas) et connaît les dossiers de
+  bibliothèque par les fichiers `*.mblink` de Jellyfin. Une liste est toujours lue jusqu'au bout avant
+  d'être rendue.
 - **Accents** :
   - `ILocalMetadataProvider<Movie|Episode>` « JellyUSB NFO » ;
   - événements `ItemAdded` / `ItemUpdated` ;
@@ -226,12 +254,13 @@ main ou par une actualisation depuis TMDb.
 
 ## Tests
 
-- `Jellyfin.Plugin.JellyUsb.Tests/` : 45 tests unitaires (`dotnet test`).
+- `Jellyfin.Plugin.JellyUsb.Tests/` : 72 tests unitaires (`dotnet test`).
 - `tests/integration/` :
   - `make-media.sh` crée une fausse médiathèque (NFO en Windows‑1252, chapitres doublement encodés) ;
   - `test-server.py` lance une **instance Jellyfin jetable** (port 18096, dossiers séparés, compte de
     test aléatoire) ;
-  - `playback-checks.py` vérifie le blocage pour chaque famille de client.
+  - `playback-checks.py` vérifie le blocage pour chaque famille de client ;
+  - `unplug-checks.py` vérifie qu'un disque débranché ne fait retirer aucun film.
 
 Exemple :
 

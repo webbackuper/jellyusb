@@ -215,8 +215,11 @@ public class MessageTests
     }
 }
 
-public class ResilientFileSystemTests
+public class LibraryGuardTests
 {
+    private const string Mounted02 = "36 35 8:17 / /mnt/usb/MOVIES02 rw,noatime shared:1 - fuseblk /dev/sdb1 rw\n";
+    private const string Automount00 = "40 35 0:50 / /mnt/usb/MOVIES00 rw,relatime shared:9 - autofs systemd-1 rw\n";
+
     private static System.Collections.Generic.IEnumerable<string> Throwing(int after, System.Exception ex)
     {
         for (var i = 0; i < after; i++)
@@ -227,32 +230,161 @@ public class ResilientFileSystemTests
         throw ex;
     }
 
-    [Fact]
-    public void Device_gone_while_enumerating_ends_the_listing()
-    {
-        var gone = 0;
-        var enodev = new System.IO.IOException("No such device : '/mnt/usb/MOVIES01'", 19);
-        var result = ResilientFileSystem.Guard(() => Throwing(0, enodev), _ => gone++).ToList();
-        Assert.Empty(result);
-        Assert.Equal(1, gone);
+    private static System.Collections.Generic.IEnumerable<string> Files(params string[] names) => names;
 
-        var partial = ResilientFileSystem.Guard(() => Throwing(2, new System.IO.IOException("Transport endpoint is not connected", 107)), _ => gone++).ToList();
-        Assert.Equal(["f0", "f1"], partial);
+    /// <summary>A guard where /mnt/usb/MOVIES02 is mounted, MOVIES00 is an automount point, and plain folders have the given state.</summary>
+    private static LibraryGuard Guard(System.Func<string, bool?>? hasEntries = null, string mountInfo = Mounted02 + Automount00)
+        => new(new MountTable(() => mountInfo), () => "/mnt/usb/", hasEntries ?? (_ => null));
+
+    private static System.IO.IOException Enodev() => new("No such device : '/mnt/usb/MOVIES02/MOVIES02'", 19);
+
+    [Theory]
+    [InlineData("/srv/films", GuardScope.Outside)]
+    [InlineData("/mnt/usb", GuardScope.BasePath)]
+    [InlineData("/mnt/usb/", GuardScope.BasePath)]
+    [InlineData("/mnt/usb/MOVIES02", GuardScope.MediaRoot)]
+    [InlineData("/mnt/usb/MOVIES02/", GuardScope.MediaRoot)]
+    [InlineData("/mnt/usb/MOVIES02/MOVIES02", GuardScope.InsideMedia)]
+    [InlineData("/mnt/usbx/MOVIES02", GuardScope.Outside)]
+    public void Classifies_paths(string path, GuardScope expected)
+        => Assert.Equal(expected, Guard().Classify(path).Scope);
+
+    [Fact]
+    public void Root_states()
+    {
+        var guard = Guard(p => p == "/mnt/usb/MOVIES05" ? true : p == "/mnt/usb/MOVIES06" ? false : null);
+        Assert.Equal(MediaRootState.Present, guard.GetRootState("/mnt/usb/MOVIES02")); // mounted
+        Assert.Equal(MediaRootState.Automount, guard.GetRootState("/mnt/usb/MOVIES00")); // autofs, not mounted
+        Assert.Equal(MediaRootState.Present, guard.GetRootState("/mnt/usb/MOVIES05")); // plain folder with files
+        Assert.Equal(MediaRootState.Absent, guard.GetRootState("/mnt/usb/MOVIES06")); // empty mount point
+        Assert.Equal(MediaRootState.Absent, guard.GetRootState("/mnt/usb/MOVIES07")); // missing
     }
 
     [Fact]
-    public void Device_gone_when_starting_is_empty()
+    public void Present_medium_is_listed_in_full()
     {
-        var result = ResilientFileSystem.Guard<string>(() => throw new System.IO.IOException("No such device", 19), _ => { }).ToList();
+        var result = Guard().List("/mnt/usb/MOVIES02/MOVIES02", false, () => Files("a.mkv", "a.nfo"));
+        Assert.Equal(["a.mkv", "a.nfo"], result);
+    }
+
+    [Fact]
+    public void Long_absent_library_root_is_quietly_empty()
+    {
+        var guard = Guard(_ => false); // /mnt/usb/MOVIES06 is an empty mount point, a library folder
+        var called = false;
+        Assert.Empty(guard.List("/mnt/usb/MOVIES06", true, () => { called = true; return Files("x"); }));
+        Assert.Empty(guard.List("/mnt/usb/MOVIES06", false, () => { called = true; return Files("x"); }));
+        Assert.False(called); // the drive is not touched
+    }
+
+    [Fact]
+    public void Root_that_is_not_a_library_folder_throws_when_absent()
+    {
+        // library on /mnt/usb itself: MOVIES06 is a sub-folder, an empty answer would remove its movies
+        var guard = new LibraryGuard(new MountTable(() => string.Empty), () => "/mnt/usb", _ => false, _ => false);
+        Assert.Empty(guard.List("/mnt/usb/MOVIES06", true, () => Files("x")));
+        Assert.Throws<System.IO.IOException>(() => guard.List("/mnt/usb/MOVIES06", false, () => Files("x")));
+    }
+
+    [Fact]
+    public void Library_roots_come_from_the_mblink_files()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "jellyusb-test-" + System.Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(System.IO.Path.Combine(dir, "Films"));
+        try
+        {
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "Films", "MOVIES02.mblink"), "/mnt/usb/MOVIES02");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "Films", "MOVIES03.mblink"), "/mnt/usb/MOVIES03/\n");
+            var roots = LibraryRoots.Read(dir);
+            Assert.Contains("/mnt/usb/MOVIES02", roots);
+            Assert.Contains("/mnt/usb/MOVIES03", roots);
+            Assert.Empty(LibraryRoots.Read(System.IO.Path.Combine(dir, "missing")));
+        }
+        finally
+        {
+            System.IO.Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void Root_of_a_drive_unplugged_a_moment_ago_throws()
+    {
+        var plugged = true;
+        var now = new System.DateTime(2026, 11, 22, 2, 0, 0, System.DateTimeKind.Utc);
+        var guard = new LibraryGuard(new MountTable(() => string.Empty), () => "/mnt/usb", _ => plugged, _ => true, () => now);
+        Assert.Equal(["a"], guard.List("/mnt/usb/MOVIES06", false, () => Files("a")));
+        plugged = false; // unplugged during the scan
+        Assert.Empty(guard.List("/mnt/usb/MOVIES06", true, () => Files("a")));
+        Assert.Throws<System.IO.IOException>(() => guard.List("/mnt/usb/MOVIES06", false, () => Files("a")));
+        now += LibraryGuard.RecentWindow; // a while later: quiet again
+        Assert.Empty(guard.List("/mnt/usb/MOVIES06", false, () => Files("a")));
+    }
+
+    [Fact]
+    public void Inside_an_absent_medium_throws_instead_of_an_empty_listing()
+    {
+        // Jellyfin lists a missing folder as empty and would remove its movies; an I/O error keeps them.
+        foreach (var state in new bool?[] { null, false })
+        {
+            var guard = Guard(_ => state);
+            var ex = Assert.Throws<System.IO.IOException>(() => guard.List("/mnt/usb/MOVIES06/MOVIES06", false, () => Files()));
+            Assert.IsNotType<System.IO.DirectoryNotFoundException>(ex);
+            Assert.Contains("MOVIES06", ex.Message);
+        }
+    }
+
+    [Fact]
+    public void Drive_gone_while_listing_is_never_a_truncated_listing()
+    {
+        var guard = Guard();
+        Assert.Throws<System.IO.IOException>(() => guard.List("/mnt/usb/MOVIES02/MOVIES02", false, () => Throwing(2, Enodev())));
+        Assert.Throws<System.IO.IOException>(() => guard.List("/mnt/usb/MOVIES02/MOVIES02", false, () => Throwing(0, new System.IO.IOException("Transport endpoint is not connected", 107))));
+        // the root: "inaccessible or empty" for the probe, an error for a real listing
+        Assert.Empty(guard.List("/mnt/usb/MOVIES02", true, () => Throwing(2, Enodev())));
+        Assert.Throws<System.IO.IOException>(() => guard.List("/mnt/usb/MOVIES02", false, () => Throwing(2, Enodev())));
+    }
+
+    [Fact]
+    public void Unplugged_automount_root_is_tried_then_empty()
+    {
+        var guard = Guard();
+        var tried = false;
+        var result = guard.List("/mnt/usb/MOVIES00", true, () => { tried = true; return Throwing(0, new System.IO.IOException("No such device", 19)); });
+        Assert.True(tried); // touching an automount point mounts the drive when it is there
         Assert.Empty(result);
     }
 
     [Fact]
-    public void Other_errors_still_surface()
+    public void Folder_vanishing_with_its_drive_is_not_a_deletion()
     {
-        Assert.Throws<System.IO.IOException>(() => ResilientFileSystem.Guard(() => Throwing(0, new System.IO.IOException("Input/output error", 5)), _ => { }).ToList());
-        Assert.Throws<System.UnauthorizedAccessException>(() => ResilientFileSystem.Guard(() => Throwing(0, new System.UnauthorizedAccessException()), _ => { }).ToList());
-        Assert.False(ResilientFileSystem.IsDeviceGone(new System.IO.FileNotFoundException("x")));
+        var mounted = true;
+        var guard = new LibraryGuard(new MountTable(() => mounted ? Mounted02 : string.Empty), () => "/mnt/usb", _ => false);
+        var ex = Assert.Throws<System.IO.IOException>(() => guard.List<string>("/mnt/usb/MOVIES02/MOVIES02", false, () =>
+        {
+            mounted = false; // unmounted while listing
+            throw new System.IO.DirectoryNotFoundException("gone");
+        }));
+        Assert.IsNotType<System.IO.DirectoryNotFoundException>(ex);
+    }
+
+    [Fact]
+    public void Folder_deleted_from_a_present_drive_is_still_reported()
+    {
+        var guard = Guard();
+        Assert.Throws<System.IO.DirectoryNotFoundException>(() => guard.List<string>("/mnt/usb/MOVIES02/MOVIES02/Old film", false, () => throw new System.IO.DirectoryNotFoundException("deleted")));
+    }
+
+    [Fact]
+    public void Other_errors_and_other_paths_are_left_to_jellyfin()
+    {
+        var guard = Guard();
+        Assert.Throws<System.IO.IOException>(() => guard.List("/mnt/usb/MOVIES02/MOVIES02", false, () => Throwing(0, new System.IO.IOException("Input/output error", 5))));
+        Assert.Throws<System.UnauthorizedAccessException>(() => guard.List("/mnt/usb/MOVIES02/MOVIES02", false, () => Throwing(0, new System.UnauthorizedAccessException())));
+        // outside the base path: unchanged and lazy
+        var lazy = guard.List("/srv/films", false, () => Throwing(1, Enodev()));
+        Assert.Throws<System.IO.IOException>(() => lazy.ToList());
+        Assert.False(LibraryGuard.IsDeviceGone(new System.IO.FileNotFoundException("x")));
+        Assert.False(LibraryGuard.IsDeviceGone(new System.IO.DirectoryNotFoundException("x")));
     }
 }
 

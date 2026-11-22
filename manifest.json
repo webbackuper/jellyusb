@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.5.3.0",
+        "changelog": "Interface web : une seule fenêtre « Support absent », sans la fenêtre générique « Erreur de lecture » (même sans connexion temps réel). Page du plugin plus compacte. Désinstallation complète : lecteur NFO, dépôt, réglages, cache et tâche sont retirés ; install.sh --uninstall fait de même (--purge pour les sauvegardes).",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.5.3.0/jellyusb_1.5.3.0.zip",
+        "checksum": "781dec9bda517a703494f5022b83f9df",
+        "timestamp": "2026-11-22T01:42:19Z"
+      },
+      {
         "version": "1.5.2.0",
         "changelog": "Fiabilité : chaque release passe d'abord tous les tests d'intégration sur un Jellyfin jetable. Sur une version de Jellyfin non testée, la protection des supports absents se désactive d'elle-même au lieu de risquer d'empêcher le serveur de démarrer (le journal le signale). Procédure pour essayer une mise à jour de Jellyfin avant de l'installer.",
         "targetAbi": "12.4.0.0",

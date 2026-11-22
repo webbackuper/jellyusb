@@ -84,6 +84,14 @@
                             <div class="fieldDescription checkboxFieldDescription">Une première ligne est ajoutée au résumé, seulement dans ce que reçoit la TV : rien n'est enregistré. Markdown accepté, variable {mediaId}.</div>
                         </div>
 
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="WebDetailsMediaId" type="checkbox" is="emby-checkbox" />
+                                <span>Afficher le disque et son état sur la fiche du film (navigateur)</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">Un voyant vert, rouge ou orange suivi des mêmes textes, sous les informations du film ; un clic sur le disque ouvre sa vue MediaID.</div>
+                        </div>
+
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused" for="ShortMissingMediaText">Texte court (Android TV, Kodi) : support absent</label>
                             <input id="ShortMissingMediaText" type="text" is="emby-input" />
@@ -301,7 +309,7 @@
                 var pluginId = '9f8d8889-7b20-47d5-ad9a-37807e42e4ce';
                 var page = document.querySelector('#JellyUsbConfigPage');
                 var texts = ['BasePath', 'MissingMediaHeader', 'MissingMediaText', 'MissingFileHeader', 'MissingFileText', 'ShortMissingMediaText', 'ShortMissingFileText', 'WebDisplayMode', 'WebMediaViewName', 'WebMediaButtonName', 'TvDetailsPresentText', 'TvDetailsAbsentText', 'TvDetailsFileMissingText'];
-                var checks = ['EnablePlaybackCheck', 'ShowMediaIdOnTvDetails', 'AndroidTvClosePlayer', 'EnableWebEnhancements', 'WebCloseGenericDialog', 'WebTasksPanel', 'WebMediaView', 'WebMediaButton', 'WebHomeCard', 'TvMediaView', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
+                var checks = ['EnablePlaybackCheck', 'ShowMediaIdOnTvDetails', 'AndroidTvClosePlayer', 'EnableWebEnhancements', 'WebCloseGenericDialog', 'WebTasksPanel', 'WebMediaView', 'WebMediaButton', 'WebHomeCard', 'WebDetailsMediaId', 'TvMediaView', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
 
                 var pluginName = 'JellyUSB';
                 var installed = null;   // entry of GET /Plugins

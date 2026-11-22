@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""The details of a movie show its disk and the state of the drive, for the Android TV app only.
+"""The details of a movie show its disk and the state of the drive: in the overview for the Android
+TV app only, and through GET /JellyUsb/Items/{id}/Media for the web page.
 
     details-checks.py <instance> <media>
 
@@ -82,6 +83,20 @@ def run(token, user_id, present, absent, check):
 
     status, _ = get(f"/Items/{present['Id']}?userId={user_id}", "wrong-token", ATV)
     check("no token: Jellyfin's own 401", status == 401, status)
+
+    # the web details page asks the plugin
+    status, d = get(f"/JellyUsb/Items/{present['Id']}/Media", token, WEB)
+    check("web: plugged disk", status == 200 and d and d["MediaId"] == "MOVIES98" and d["Status"] == "Present"
+          and d["Text"] == "Disque **MOVIES98** branché" and d.get("LibraryId"), d)
+    status, d = get(f"/JellyUsb/Items/{absent['Id']}/Media", token, WEB)
+    check("web: absent disk", status == 200 and d and d["MediaId"] == "MOVIES97" and d["Status"] == "MediaAbsent", d)
+    library = ts.call("GET", f"/UserViews?userId={user_id}", token=token)["Items"][0]["Id"]
+    status, d = get(f"/JellyUsb/Items/{library}/Media", token, WEB)
+    check("web: not on a USB medium (a library): 204", status == 204, status)
+    status, _ = get("/JellyUsb/Items/00000000000000000000000000000001/Media", token, WEB)
+    check("web: unknown item: 404", status == 404, status)
+    status, _ = get(f"/JellyUsb/Items/{present['Id']}/Media", "wrong-token", WEB)
+    check("web: no token: 401", status == 401, status)
 
 
 if __name__ == "__main__":

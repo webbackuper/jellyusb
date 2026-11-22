@@ -482,6 +482,30 @@ public class DetailsMediaIdTests
     }
 }
 
+public class WebDetailsMediaTests
+{
+    private static readonly PluginConfiguration Config = new();
+
+    [Fact]
+    public void Web_line_is_the_details_text_without_its_emoji()
+    {
+        Assert.Equal("Disque **MOVIES03** branché", Jellyfin.Plugin.JellyUsb.Web.ItemMedia.BuildText(Config, new PresenceResult(PresenceStatus.Present, "MOVIES03")));
+        Assert.StartsWith("Disque **MOVIES03** absent", Jellyfin.Plugin.JellyUsb.Web.ItemMedia.BuildText(Config, new PresenceResult(PresenceStatus.MediaAbsent, "MOVIES03")));
+        Assert.StartsWith("Disque **MOVIES03** branché, mais", Jellyfin.Plugin.JellyUsb.Web.ItemMedia.BuildText(Config, new PresenceResult(PresenceStatus.FileMissing, "MOVIES03")));
+        Assert.Null(Jellyfin.Plugin.JellyUsb.Web.ItemMedia.BuildText(Config, new PresenceResult(PresenceStatus.NotManaged, null)));
+    }
+
+    [Fact]
+    public void Web_line_keeps_a_text_without_emoji_and_the_raw_MediaId()
+    {
+        var config = new PluginConfiguration { TvDetailsPresentText = "Sur {mediaId}" };
+        // the page escapes the text itself: the MediaID is not markdown-escaped here
+        Assert.Equal("Sur A*B", Jellyfin.Plugin.JellyUsb.Web.ItemMedia.BuildText(config, new PresenceResult(PresenceStatus.Present, "A*B")));
+        config.TvDetailsPresentText = " ";
+        Assert.Null(Jellyfin.Plugin.JellyUsb.Web.ItemMedia.BuildText(config, new PresenceResult(PresenceStatus.Present, "A")));
+    }
+}
+
 public class FileSystemProtectionTests
 {
     [Fact]

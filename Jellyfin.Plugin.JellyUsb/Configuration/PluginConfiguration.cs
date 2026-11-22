@@ -110,6 +110,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether the home page of the web client shows a "MediaID" tile in My media.</summary>
     public bool WebHomeCard { get; set; } = true;
 
+    /// <summary>Gets or sets a value indicating whether the details page of the web client shows the MediaID and the state of its drive.</summary>
+    public bool WebDetailsMediaId { get; set; } = true;
+
     /// <summary>Gets or sets the delay before sending the message to Android TV, so it shows after the error toast.</summary>
     public int AndroidTvMessageDelayMs { get; set; } = 300;
 

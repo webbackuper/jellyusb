@@ -22,10 +22,12 @@ du support qui a servi à l'import (`MOVIES00`, `MOVIES01`… `MOVIES99`).
    - **À chaque ajout ou actualisation**, le double encodage (« Ã© ») et les « � » sont réparés quand
      c'est possible.
    - **Pour l'existant**, une tâche planifiée répare ce qui est déjà en base.
-4. **Disque visible sur la fiche Android TV.** Dans l'application Android TV, le résumé d'un film
+4. **Disque visible sur la fiche du film.** Dans l'application Android TV, le résumé d'un film
    commence par son disque et l'état de celui-ci : « 🟢 Disque **MOVIES03** branché » ou « 🔴 Disque
    **MOVIES03** absent : branchez-le pour lire ce film ». C'est ajouté seulement dans ce que reçoit la
-   TV : la base et les NFO ne changent pas.
+   TV : la base et les NFO ne changent pas. Dans le navigateur, la même ligne s'affiche sous l'année et
+   la durée, avec un voyant vert (branché), rouge (absent) ou orange (fichier introuvable). Elle se met
+   à jour toutes les 10 s, et un clic sur le nom du disque ouvre sa vue MediaID.
 5. **Vue par MediaID.** Dans une bibliothèque de films, le menu des vues (en haut à gauche, à côté de
    « Films », « Suggestions »…) propose « MediaID » : une ligne par support USB avec son image de fond,
    puis la page de chaque support avec tous ses films.
@@ -122,7 +124,7 @@ Jellyfin dans l'état d'avant JellyUSB :
 | Modification | Retirée à la désinstallation |
 |---|---|
 | Dossier du plugin (dll, image) | oui (par Jellyfin) |
-| Script de l'interface web, blocage de la lecture, ligne sur la fiche TV, tuiles MediaID (web et TV), protection des supports | oui, au redémarrage que Jellyfin demande (rien n'est écrit dans les fichiers de Jellyfin) |
+| Script de l'interface web, blocage de la lecture, ligne sur la fiche (TV et web), tuiles MediaID (web et TV), protection des supports | oui, au redémarrage que Jellyfin demande (rien n'est écrit dans les fichiers de Jellyfin) |
 | Lecteur « JellyUSB NFO » dans l'ordre des lecteurs des bibliothèques | oui |
 | Dépôt de plugins JellyUSB dans les réglages du serveur | oui |
 | Réglages du plugin, dossier cache, fichiers de la tâche planifiée | oui |
@@ -225,6 +227,7 @@ JellyUSB**. Elle reprend la fiche de l'extension :
 | Nom de la vue par MediaID | `MediaID` | Texte affiché dans le menu des vues |
 | Android TV : refermer le lecteur | oui (1,5 s) | Après un refus, envoie « Stop » à l'application pour revenir à la fiche au lieu de l'écran noir |
 | Disque sur la fiche Android TV | oui | Ajoute la ligne du disque en tête du résumé ; trois textes modifiables (branché, absent, fichier introuvable), markdown accepté |
+| Disque sur la fiche (navigateur) | oui | Affiche la même ligne, avec un voyant de couleur à la place de l'emoji |
 | Bouton du bandeau | oui, `Media` | Ajoute le bouton qui ouvre la vue par MediaID, et règle son nom |
 | Tuile MediaID (accueil web) | oui | Ajoute la tuile dans « Mes médias » de la page d'accueil |
 | Tuile MediaID (Android TV) | oui | Ajoute la bibliothèque virtuelle « MediaID » dans « Mes médias » de l'application Android TV |
@@ -287,6 +290,8 @@ main ou par une actualisation depuis TMDb.
   `/Users/{u}/Items/{id}` venant de l'application Android TV (champ `Client` de l'authentification).
   Il ajoute la ligne en tête du champ `Overview` de la réponse JSON, que l'application affiche en
   markdown. Les caractères markdown et HTML d'un MediaID sont échappés.
+- **Fiche web** : le script demande `GET /JellyUsb/Items/{id}/Media` (MediaID, état, texte, bibliothèque ;
+  204 si le film n'est pas sur un support USB) et place la ligne dans `.infoWrapper` de la fiche.
 - **Tuile Android TV** : `TvMediaViewMiddleware` ajoute la bibliothèque à `GET /UserViews`, et répond
   lui-même pour ses identifiants, dérivés du MediaID par MD5 : la fiche de la bibliothèque et de chaque
   disque, `GET /Items?ParentId=…` (les disques, puis les films d'un disque) et les images. Les fonds
@@ -307,7 +312,8 @@ main ou par une actualisation depuis TMDb.
     test aléatoire) ;
   - `playback-checks.py` vérifie le blocage pour chaque famille de client ;
   - `unplug-checks.py` vérifie qu'un disque débranché ne fait retirer aucun film ;
-  - `details-checks.py` vérifie la ligne du disque sur la fiche (Android TV seulement, rien en base) ;
+  - `details-checks.py` vérifie la ligne du disque sur la fiche (résumé pour Android TV seulement, rien
+    en base ; endpoint de la fiche web) ;
   - `tvview-checks.py` vérifie la tuile MediaID de l'application Android TV (disques, films, images) ;
   - `run-all.sh` lance tout cela sur une instance et une médiathèque neuves, puis les supprime
     (environ 30 s). `release.sh` le lance avant chaque publication et s'arrête au moindre échec.

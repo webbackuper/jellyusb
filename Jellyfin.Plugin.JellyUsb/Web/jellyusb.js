@@ -9,10 +9,12 @@
  *    each with its background; a click on a medium shows all its movies, with a way back.
  * 4. Add a "Media" button to the header, after the library buttons, that opens that view.
  * 5. Add a "MediaID" tile to "My media" on the home page, after the libraries, that opens it too.
+ * 6. On the details page of a movie, show its MediaID with a green / red / orange dot (drive plugged
+ *    in, absent, file missing), like the Android TV app; the MediaID opens its view.
  */
 (function () {
     'use strict';
-    var SETTINGS = /*JELLYUSB_SETTINGS*/null || { headers: ['Support absent', 'Fichier introuvable'], closeGenericDialog: true, tasksPanel: true, mediaView: true, mediaViewName: 'MediaID', mediaButton: true, mediaButtonName: 'Media', homeCard: true };
+    var SETTINGS = /*JELLYUSB_SETTINGS*/null || { headers: ['Support absent', 'Fichier introuvable'], closeGenericDialog: true, tasksPanel: true, mediaView: true, mediaViewName: 'MediaID', mediaButton: true, mediaButtonName: 'Media', homeCard: true, detailsMediaId: true };
     var OURS = SETTINGS.headers.filter(Boolean).map(function (h) { return h.trim(); });
     var WINDOW_MS = 6000;
 
@@ -368,7 +370,7 @@
     function stateText(m) {
         return m.Present
             ? '<span class="jusb-dot" style="background:#2ecc71"></span>branché'
-            : '<span class="jusb-dot" style="background:gray"></span>absent';
+            : '<span class="jusb-dot" style="background:#e74c3c"></span>absent';
     }
 
     function filmCount(n) {
@@ -720,6 +722,80 @@
     if (SETTINGS.mediaView && SETTINGS.homeCard) {
         setInterval(ensureHomeCard, 700);
         window.addEventListener('hashchange', function () { setTimeout(ensureHomeCard, 100); });
+    }
+
+    /* ---------- 6. MediaID and state of its drive on the details page ---------- */
+    var DETAILS_ID = 'jellyusbDetailsMedia';
+    var DETAILS_REFRESH_MS = 10000;
+    var DOT_COLORS = { Present: '#2ecc71', MediaAbsent: '#e74c3c', FileMissing: '#f39c12' };
+    var detailsLoading = null;
+
+    function addDetailsStyle() {
+        if (document.getElementById('jellyusbDetailsStyle')) { return; }
+        var st = document.createElement('style');
+        st.id = 'jellyusbDetailsStyle';
+        st.textContent = '#' + DETAILS_ID + '{margin:.45em 0 .2em;font-size:1.05em}'
+            + '#' + DETAILS_ID + '[hidden]{display:none}'
+            + '#' + DETAILS_ID + ' .jusb-led{display:inline-block;vertical-align:.02em;width:.75em;height:.75em;margin-right:.45em;border-radius:50%;box-shadow:0 0 .35em currentColor}'
+            + '#' + DETAILS_ID + ' a{color:inherit;text-decoration:none}'
+            + '#' + DETAILS_ID + ' a:hover{text-decoration:underline}';
+        document.head.appendChild(st);
+    }
+
+    function visibleDetailsPage() {
+        var pages = document.querySelectorAll('#itemDetailPage');
+        for (var i = 0; i < pages.length; i++) {
+            if (!pages[i].classList.contains('hide') && pages[i].offsetParent !== null) { return pages[i]; }
+        }
+        return null;
+    }
+
+    function detailsHtml(d) {
+        var color = DOT_COLORS[d.Status] || 'gray';
+        var name = esc(d.MediaId);
+        if (d.LibraryId) {
+            var href = '#/movies?topParentId=' + encodeURIComponent(d.LibraryId) + '&collectionType=movies&jellyusb=media&mediaId=' + encodeURIComponent(d.MediaId);
+            name = '<a href="' + esc(href) + '" title="' + esc((SETTINGS.mediaViewName || 'MediaID') + ' ' + d.MediaId) + '">' + name + '</a>';
+        }
+        var text = esc(d.Text).split(esc(d.MediaId)).join('\u0000');
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').split('\u0000').join(name);
+        return '<span class="jusb-led" style="background:' + color + ';color:' + color + '"></span><span>' + text + '</span>';
+    }
+
+    function ensureDetailsMedia() {
+        var p = hashParams();
+        var id = p.route === '#/details' ? p.params.get('id') : null;
+        var page = id && visibleDetailsPage();
+        var info = page && page.querySelector('.infoWrapper');
+        if (!info) { return; }
+        var el = info.querySelector('#' + DETAILS_ID);
+        if (!el) {
+            addDetailsStyle();
+            el = document.createElement('div');
+            el.id = DETAILS_ID;
+            el.hidden = true;
+            var misc = info.querySelector('.itemMiscInfo-secondary') || info.querySelector('.itemMiscInfo-primary');
+            if (misc) { misc.insertAdjacentElement('afterend', el); } else { info.appendChild(el); }
+        }
+        // the page is reused from one movie to the next: forget the previous one at once
+        if (el.getAttribute('data-item') !== id) { el.hidden = true; el.innerHTML = ''; el.removeAttribute('data-at'); }
+        if (Date.now() - Number(el.getAttribute('data-at') || 0) < DETAILS_REFRESH_MS || detailsLoading === id) { return; }
+        el.setAttribute('data-item', id);
+        el.setAttribute('data-at', String(Date.now()));
+        detailsLoading = id;
+        window.ApiClient.ajax({ type: 'GET', url: window.ApiClient.getUrl('JellyUsb/Items/' + id + '/Media'), dataType: 'text' }).then(function (body) {
+            detailsLoading = null;
+            if (el.getAttribute('data-item') !== id) { return; }
+            var d = body ? JSON.parse(body) : null;
+            if (!d || !d.MediaId) { el.hidden = true; el.innerHTML = ''; return; }
+            el.innerHTML = detailsHtml(d);
+            el.hidden = false;
+        }, function () { detailsLoading = null; el.hidden = true; });
+    }
+
+    if (SETTINGS.detailsMediaId) {
+        setInterval(ensureDetailsMedia, 700);
+        window.addEventListener('hashchange', function () { setTimeout(ensureDetailsMedia, 50); });
     }
 })();
 

@@ -3,7 +3,8 @@
 #
 #   ./release.sh 1.0.0.0 "Première version."
 #
-# 1. compile (Release) et lance les tests ;
+# 1. compile (Release), lance les tests unitaires puis les tests d'intégration sur une instance Jellyfin
+#    jetable (tests/integration/run-all.sh) : la release est annulée au moindre échec ;
 # 2. crée artifacts/jellyusb_<version>.zip (dll + meta.json + image) et son MD5 ;
 # 3. ajoute la version en tête de manifest.json (le dépôt que Jellyfin lit) ;
 # 4. commite, pousse, et crée la release GitHub v<version> avec le zip.
@@ -23,12 +24,21 @@ GH="$(command -v gh || echo "$HOME/.local/bin/gh")"
 [ -z "$(git status --porcelain)" ] || { echo "des modifications ne sont pas commitées" >&2; exit 1; }
 
 echo "==> Version $VERSION"
+# until the commit, any failure puts the version files back as they were
+trap 'git checkout -- Directory.Build.props build.yaml; echo "release annulée" >&2' ERR
 sed -i -E "s#<(Version|AssemblyVersion|FileVersion)>[^<]*<#<\1>$VERSION<#g" Directory.Build.props
 sed -i -E "s|^version: \".*\"|version: \"$VERSION\"|" build.yaml
 
 echo "==> Compilation et tests"
 dotnet build -c Release --nologo -v q
 dotnet test --nologo -v q
+
+echo "==> Tests d'intégration (instance Jellyfin jetable)"
+if [ "${JELLYUSB_SKIP_INTEGRATION:-0}" = 1 ]; then
+    echo "    ignorés (JELLYUSB_SKIP_INTEGRATION=1)"
+else
+    tests/integration/run-all.sh
+fi
 
 echo "==> Paquet"
 OUT="$HERE/artifacts"
@@ -61,6 +71,7 @@ python3 -I tools/update-manifest.py manifest.json "$VERSION" "$TARGET_ABI" "$TIM
     "https://github.com/$REPO/releases/download/v$VERSION/jellyusb_$VERSION.zip" "$CHANGELOG"
 
 echo "==> Commit et publication"
+trap - ERR
 git add Directory.Build.props build.yaml manifest.json
 git commit -qm "Release $VERSION" -m "$CHANGELOG"
 git tag -a "v$VERSION" -m "JellyUSB $VERSION"

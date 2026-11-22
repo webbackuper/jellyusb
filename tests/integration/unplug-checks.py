@@ -31,6 +31,12 @@ def movies(token, user_id, root):
     return [i for i in r["Items"] if (i.get("Path") or "").startswith(root + "/")]
 
 
+def kept(items, ids):
+    """How many of the movies <ids> are still in <items>."""
+    present = {i["Id"] for i in items}
+    return sum(1 for i in ids if i in present)
+
+
 def wait_refresh(token, seconds=20):
     # item refreshes are queued: wait until the server has been idle for a few seconds
     end = time.time() + seconds
@@ -57,7 +63,9 @@ def main():
         if not ok:
             failures.append(label)
 
-    before = movies(token, user_id, root)
+    # only movies whose file is there: a file deleted earlier (playback-checks.py) is rightly removed
+    before = [m for m in movies(token, user_id, root) if os.path.exists(m["Path"])]
+    ids = [m["Id"] for m in before]
     check(f"{MEDIA_ID} has movies before the test ({len(before)})", len(before) > 0)
     folder_ids = sorted({m["ParentId"] for m in before})
     if not before or not os.path.isdir(inner):
@@ -77,11 +85,11 @@ def main():
             ts.call("POST", f"/Items/{fid}/Refresh?Recursive=true&MetadataRefreshMode=Default&ImageRefreshMode=Default", token=token)
         wait_refresh(token)
         check("re-reading the folder of an unplugged drive removes nothing",
-              len(movies(token, user_id, root)) == len(before))
+              kept(movies(token, user_id, root), ids) == len(ids))
 
         ts.scan(instance)
         check("a full scan with the drive unplugged removes nothing",
-              len(movies(token, user_id, root)) == len(before))
+              kept(movies(token, user_id, root), ids) == len(ids))
     finally:
         # plug back
         for name in os.listdir(parked):
@@ -90,8 +98,8 @@ def main():
 
     ts.scan(instance)
     after = movies(token, user_id, root)
-    check("the movies are still there once the drive is back", len(after) == len(before))
-    check("same items (no re-import)", sorted(m["Id"] for m in after) == sorted(m["Id"] for m in before))
+    check("the movies are still there once the drive is back", kept(after, ids) == len(ids))
+    check("same items (no re-import)", {m["Id"] for m in after if m["Id"] in ids} == set(ids))
 
     print("ALL UNPLUG CHECKS PASSED" if not failures else f"{len(failures)} FAILED")
     return 1 if failures else 0

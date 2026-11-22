@@ -54,6 +54,15 @@ public class ImportRepairService : IHostedService, IDisposable
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        if (PluginServiceRegistrator.FileSystemProtection == "active")
+        {
+            _logger.LogInformation("JellyUSB: protection des supports absents {Status}", PluginServiceRegistrator.FileSystemProtection);
+        }
+        else
+        {
+            _logger.LogWarning("JellyUSB: protection des supports absents {Status}", PluginServiceRegistrator.FileSystemProtection);
+        }
+
         try
         {
             EnsureReaderOrder();

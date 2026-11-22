@@ -482,3 +482,27 @@ public class DetailsMediaIdTests
     }
 }
 
+public class FileSystemProtectionTests
+{
+    [Fact]
+    public void Other_server_versions_are_not_protected_but_start()
+    {
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        var status = PluginServiceRegistrator.TryProtectFileSystem(services, new System.Version(12, 5, 0));
+        Assert.StartsWith("désactivée", status);
+        Assert.Empty(services);
+    }
+
+    [Fact]
+    public void Tested_version_installs_the_protected_file_system()
+    {
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Assert.Equal("active", PluginServiceRegistrator.TryProtectFileSystem(services, new System.Version(12, 4, 0)));
+        Assert.Contains(services, d => d.ServiceType == typeof(MediaBrowser.Model.IO.IFileSystem) && d.ImplementationType == typeof(ResilientFileSystem));
+    }
+
+    [Fact]
+    public void Server_class_still_has_what_is_overridden()
+        => Assert.Null(PluginServiceRegistrator.CheckManagedFileSystem());
+}
+

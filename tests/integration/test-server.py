@@ -25,7 +25,8 @@ import urllib.request
 
 PORT = int(os.environ.get("JELLYUSB_TEST_PORT", "18096"))
 URL = f"http://127.0.0.1:{PORT}"
-JF_BIN = "/usr/lib/jellyfin/bin/jellyfin"
+JF_BIN = os.environ.get("JELLYUSB_JF_BIN") or "/usr/lib/jellyfin/bin/jellyfin"
+JF_WEBDIR = os.environ.get("JELLYUSB_JF_WEBDIR") or "/usr/share/jellyfin/web"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PLUGIN_BUILD = os.environ.get("JELLYUSB_PLUGIN_BUILD") or os.path.join(REPO, "Jellyfin.Plugin.JellyUsb", "bin", "Release", "net10.0")
 PLUGIN_ID = "9f8d8889-7b20-47d5-ad9a-37807e42e4ce"
@@ -119,7 +120,7 @@ def start(instance, media):
     proc = subprocess.Popen(
         [JF_BIN, "--datadir", f"{instance}/data", "--configdir", f"{instance}/config",
          "--cachedir", f"{instance}/cache", "--logdir", f"{instance}/log",
-         "--webdir", "/usr/share/jellyfin/web", "--ffmpeg", "/usr/lib/jellyfin-ffmpeg/ffmpeg"],
+         "--webdir", JF_WEBDIR, "--ffmpeg", "/usr/lib/jellyfin-ffmpeg/ffmpeg"],
         stdout=log, stderr=subprocess.STDOUT, start_new_session=True, env={**os.environ, "LANG": "fr_FR.UTF-8", "TMPDIR": tmpdir})
     with open(os.path.join(instance, "server.pid"), "w") as f:
         f.write(str(proc.pid))

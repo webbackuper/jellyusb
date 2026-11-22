@@ -50,7 +50,10 @@ Depuis la 1.4.3, sous le chemin de base :
 | Bibliothèque montée sur `/mnt/usb` lui-même, support absent | une erreur d'entrée-sortie | les films du support sont gardés |
 | Dossier vraiment supprimé d'un disque branché | « dossier introuvable », comme Jellyfin | le film est retiré, normalement |
 
-Les chemins hors du chemin de base ne sont pas concernés. Le script
+Les chemins hors du chemin de base ne sont pas concernés. Cette protection prolonge une classe
+interne de Jellyfin. Sur une autre version que la 12.4, ou si cette classe a changé, elle ne se met
+pas en place, et le journal le dit au démarrage (« protection des supports absents désactivée ») :
+Jellyfin démarre normalement, sans la protection. Le script
 `tests/integration/unplug-checks.py` rejoue le scénario : il débranche un support, fait relire son
 dossier, lance un scan complet, puis rebranche le support.
 
@@ -268,14 +271,37 @@ main ou par une actualisation depuis TMDb.
 
 ## Tests
 
-- `Jellyfin.Plugin.JellyUsb.Tests/` : 76 tests unitaires (`dotnet test`).
+- `Jellyfin.Plugin.JellyUsb.Tests/` : 79 tests unitaires (`dotnet test`).
 - `tests/integration/` :
   - `make-media.sh` crée une fausse médiathèque (NFO en Windows‑1252, chapitres doublement encodés) ;
   - `test-server.py` lance une **instance Jellyfin jetable** (port 18096, dossiers séparés, compte de
     test aléatoire) ;
   - `playback-checks.py` vérifie le blocage pour chaque famille de client ;
   - `unplug-checks.py` vérifie qu'un disque débranché ne fait retirer aucun film ;
-  - `details-checks.py` vérifie la ligne du disque sur la fiche (Android TV seulement, rien en base).
+  - `details-checks.py` vérifie la ligne du disque sur la fiche (Android TV seulement, rien en base) ;
+  - `run-all.sh` lance tout cela sur une instance et une médiathèque neuves, puis les supprime
+    (environ 30 s). `release.sh` le lance avant chaque publication et s'arrête au moindre échec.
+
+### Avant de mettre à jour Jellyfin
+
+Le paquet Jellyfin de la machine sert aussi aux tests. Pour essayer une nouvelle version **avant** de
+mettre le serveur à jour :
+
+1. Télécharger l'archive Linux de la nouvelle version (repo.jellyfin.org) et l'extraire, par exemple
+   dans `~/jellyfin-next`. On y trouve l'exécutable `jellyfin` et le dossier `jellyfin-web`.
+2. Compiler JellyUSB avec les bibliothèques de cette version :
+   ```bash
+   dotnet build -c Release -p:JellyfinBinDir=$HOME/jellyfin-next/jellyfin
+   ```
+3. Lancer les tests sur cette version :
+   ```bash
+   JELLYUSB_JF_BIN=$HOME/jellyfin-next/jellyfin/jellyfin JELLYUSB_JF_WEBDIR=$HOME/jellyfin-next/jellyfin/jellyfin-web tests/integration/run-all.sh
+   ```
+4. Si tout passe et que la version change de numéro (12.4 vers 12.5), mettre à jour ensemble
+   `TestedServerVersion` (`PluginServiceRegistrator.cs`), `targetAbi` (`release.sh`, `build.yaml`) et
+   les paquets `Jellyfin.Controller` / `Jellyfin.Model`, puis publier une release. Mettre ensuite le
+   serveur à jour.
+5. Si un test échoue, ne pas mettre le serveur à jour tant que JellyUSB n'est pas corrigé.
 
 Exemple :
 

@@ -22,7 +22,11 @@ du support qui a servi à l'import (`MOVIES00`, `MOVIES01`… `MOVIES99`).
    - **À chaque ajout ou actualisation**, le double encodage (« Ã© ») et les « � » sont réparés quand
      c'est possible.
    - **Pour l'existant**, une tâche planifiée répare ce qui est déjà en base.
-4. **Vue par MediaID.** Dans une bibliothèque de films, le menu des vues (en haut à gauche, à côté de
+4. **Disque visible sur la fiche Android TV.** Dans l'application Android TV, le résumé d'un film
+   commence par son disque et l'état de celui-ci : « 🟢 Disque **MOVIES03** branché » ou « 🔴 Disque
+   **MOVIES03** absent : branchez-le pour lire ce film ». C'est ajouté seulement dans ce que reçoit la
+   TV : la base et les NFO ne changent pas.
+5. **Vue par MediaID.** Dans une bibliothèque de films, le menu des vues (en haut à gauche, à côté de
    « Films », « Suggestions »…) propose « MediaID » : une ligne par support USB avec son image de fond,
    puis la page de chaque support avec tous ses films.
 
@@ -59,7 +63,7 @@ Tests du 21/11/2026 : instance Jellyfin 12.4 jetable, émulateurs Android, Kodi 
 | **Interface web** (navigateur), Jellyfin Media Player | Une seule fenêtre **« Support absent »**. La fenêtre générique « Erreur de lecture » que jellyfin-web ouvre en même temps est fermée automatiquement par le script JellyUSB (depuis la 1.3). |
 | **App Android 2.7.3**, lecteur « Web » | Comme l'interface web |
 | **App Android 2.7.3**, lecteur intégré (par défaut) | Le lecteur reste noir, sans texte (l'app n'affiche pas d'erreur). En revenant en arrière, la fenêtre **« Support absent »** attend dans l'app. Un seul « Compris ». |
-| **Android TV 0.20.0** | Toast d'environ 3 s : « Insérez le support MOVIES03 : « *Titre* » est absent du serveur. » (texte court, modifiable) |
+| **Android TV 0.20.0** | Avant de lancer : la fiche du film indique le disque et s'il est branché (depuis la 1.5). En lançant : toast d'environ 3 s, « Insérez le support MOVIES03 : « *Titre* » est absent du serveur. » (texte court, modifiable) |
 | **Findroid 1.2.0** | Toast technique « Index 0 out of bounds… » : Findroid n'affiche pas les messages du serveur |
 | **Kodi 21.3 + jellyfin-kodi 2.2.0** (mode « add-on ») | Notification **« Support absent »** : « Insérez le support MOVIES03 : « *Titre* » est absent du serveur. » (environ 9 s, texte défilant). Pas d'autre erreur à l'écran. |
 | **Kodi 21.3 + JellyCon 1.0.2** | Notification « Connection Error / NotAllowed » (JellyCon), puis notre texte court dans une notification titrée « JellyCon » (JellyCon remplace notre titre) |
@@ -189,6 +193,7 @@ JellyUSB**. Elle reprend la fiche de l'extension :
 | Délais web / Android TV | 300 / 300 ms | Pour que notre message arrive après la fenêtre ou le toast d'erreur de l'application |
 | Script de l'interface web | oui | Fermeture de la fenêtre générique, panneau des tâches et vue MediaID (désactivables séparément) |
 | Nom de la vue par MediaID | `MediaID` | Texte affiché dans le menu des vues |
+| Disque sur la fiche Android TV | oui | Ajoute la ligne du disque en tête du résumé ; trois textes modifiables (branché, absent, fichier introuvable), markdown accepté |
 | Bouton du bandeau | oui, `Media` | Ajoute le bouton qui ouvre la vue par MediaID, et règle son nom |
 | Lire les NFO non UTF‑8 en Windows‑1252 | oui | Lecteur « JellyUSB NFO », placé automatiquement avant « Nfo » |
 | Réparer les textes à l'import | oui | Titres, titre original, résumé, slogan, genres, studios, tags, chapitres, pistes |
@@ -245,6 +250,10 @@ main ou par une actualisation depuis TMDb.
   - enregistrement en `ItemUpdateType.MetadataImport`, qui n'écrit rien sur les disques ;
   - tâche `IScheduledTask`.
 
+- **Fiche Android TV** : `DetailsMediaIdMiddleware` repère `GET /Items/{id}` et
+  `/Users/{u}/Items/{id}` venant de l'application Android TV (champ `Client` de l'authentification).
+  Il ajoute la ligne en tête du champ `Overview` de la réponse JSON, que l'application affiche en
+  markdown. Les caractères markdown et HTML d'un MediaID sont échappés.
 - **Vue MediaID** : le script ajoute une entrée au menu `#library-view-menu` de jellyfin-web. Il
   remplace le contenu de la page par sa vue quand l'adresse contient `jellyusb=media` (et
   `mediaId=…` pour la page d'un support), d'où l'historique du navigateur. Les données viennent de :
@@ -254,13 +263,14 @@ main ou par une actualisation depuis TMDb.
 
 ## Tests
 
-- `Jellyfin.Plugin.JellyUsb.Tests/` : 72 tests unitaires (`dotnet test`).
+- `Jellyfin.Plugin.JellyUsb.Tests/` : 76 tests unitaires (`dotnet test`).
 - `tests/integration/` :
   - `make-media.sh` crée une fausse médiathèque (NFO en Windows‑1252, chapitres doublement encodés) ;
   - `test-server.py` lance une **instance Jellyfin jetable** (port 18096, dossiers séparés, compte de
     test aléatoire) ;
   - `playback-checks.py` vérifie le blocage pour chaque famille de client ;
-  - `unplug-checks.py` vérifie qu'un disque débranché ne fait retirer aucun film.
+  - `unplug-checks.py` vérifie qu'un disque débranché ne fait retirer aucun film ;
+  - `details-checks.py` vérifie la ligne du disque sur la fiche (Android TV seulement, rien en base).
 
 Exemple :
 

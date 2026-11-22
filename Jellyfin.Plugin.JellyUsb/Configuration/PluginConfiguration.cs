@@ -56,6 +56,18 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets the short text for toasts and notifications when the file is missing.</summary>
     public string ShortMissingFileText { get; set; } = "Fichier introuvable sur le support {mediaId} : « {title} ».";
 
+    /// <summary>Gets or sets a value indicating whether the Android TV details screen shows the MediaID and the state of its drive.</summary>
+    public bool ShowMediaIdOnTvDetails { get; set; } = true;
+
+    /// <summary>Gets or sets the first line of the overview when the drive is plugged in (markdown; {mediaId}).</summary>
+    public string TvDetailsPresentText { get; set; } = "🟢 Disque **{mediaId}** branché";
+
+    /// <summary>Gets or sets the first line of the overview when the drive is not plugged in.</summary>
+    public string TvDetailsAbsentText { get; set; } = "🔴 Disque **{mediaId}** absent : branchez-le pour lire ce film";
+
+    /// <summary>Gets or sets the first line of the overview when the drive is there but the file is not.</summary>
+    public string TvDetailsFileMissingText { get; set; } = "🟠 Disque **{mediaId}** branché, mais le fichier est introuvable";
+
     /// <summary>Gets or sets how the web client displays the message.</summary>
     public WebDisplayMode WebDisplayMode { get; set; } = WebDisplayMode.MessageOnTop;
 

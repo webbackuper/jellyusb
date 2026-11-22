@@ -440,3 +440,45 @@ public class MediaBackgroundTests
         System.Xml.Linq.XDocument.Parse(odd); // well-formed
     }
 }
+
+public class DetailsMediaIdTests
+{
+    private static readonly PluginConfiguration Config = new();
+
+    [Fact]
+    public void Line_tells_the_disk_and_its_state()
+    {
+        Assert.Equal("🟢 Disque **MOVIES03** branché", DetailsMediaIdMiddleware.BuildLine(Config, new PresenceResult(PresenceStatus.Present, "MOVIES03")));
+        Assert.StartsWith("🔴 Disque **MOVIES03** absent", DetailsMediaIdMiddleware.BuildLine(Config, new PresenceResult(PresenceStatus.MediaAbsent, "MOVIES03")));
+        Assert.StartsWith("🟠 Disque **MOVIES03** branché, mais", DetailsMediaIdMiddleware.BuildLine(Config, new PresenceResult(PresenceStatus.FileMissing, "MOVIES03")));
+        Assert.Null(DetailsMediaIdMiddleware.BuildLine(Config, new PresenceResult(PresenceStatus.NotManaged, null)));
+    }
+
+    [Fact]
+    public void MediaId_cannot_inject_markdown_or_html()
+    {
+        var line = DetailsMediaIdMiddleware.BuildLine(Config, new PresenceResult(PresenceStatus.Present, "A*B_<i>"));
+        Assert.Contains("A\\*B\\_\\<i\\>", line);
+    }
+
+    [Fact]
+    public void Overview_gets_the_line_first_and_the_rest_is_kept()
+    {
+        var json = "{\"Name\":\"Amélie\",\"Id\":\"17e1d5152de898cef0826c63bc6c08ad\",\"Overview\":\"Une jeune femme…\",\"RunTimeTicks\":72000000000,\"UserData\":{\"Played\":false}}";
+        var result = System.Text.Json.JsonDocument.Parse(DetailsMediaIdMiddleware.AddToOverview(json, "🟢 Disque **MOVIES03** branché")!).RootElement;
+        Assert.Equal("🟢 Disque **MOVIES03** branché\n\nUne jeune femme…", result.GetProperty("Overview").GetString());
+        Assert.Equal("Amélie", result.GetProperty("Name").GetString());
+        Assert.Equal(72000000000, result.GetProperty("RunTimeTicks").GetInt64());
+        Assert.False(result.GetProperty("UserData").GetProperty("Played").GetBoolean());
+    }
+
+    [Fact]
+    public void Item_without_overview_gets_the_line_alone_and_non_items_are_left()
+    {
+        var result = System.Text.Json.JsonDocument.Parse(DetailsMediaIdMiddleware.AddToOverview("{\"Id\":\"x\"}", "L")!).RootElement;
+        Assert.Equal("L", result.GetProperty("Overview").GetString());
+        Assert.Null(DetailsMediaIdMiddleware.AddToOverview("[1,2]", "L"));
+        Assert.Null(DetailsMediaIdMiddleware.AddToOverview("{\"Items\":[]}", "L"));
+    }
+}
+

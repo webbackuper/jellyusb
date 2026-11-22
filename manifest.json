@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.5.2.0",
+        "changelog": "Fiabilité : chaque release passe d'abord tous les tests d'intégration sur un Jellyfin jetable. Sur une version de Jellyfin non testée, la protection des supports absents se désactive d'elle-même au lieu de risquer d'empêcher le serveur de démarrer (le journal le signale). Procédure pour essayer une mise à jour de Jellyfin avant de l'installer.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.5.2.0/jellyusb_1.5.2.0.zip",
+        "checksum": "43c750d430d7a88f6f37f8cdd742852e",
+        "timestamp": "2026-11-22T01:25:20Z"
+      },
+      {
         "version": "1.5.1.0",
         "changelog": "Android TV : après un refus de lecture, le lecteur se referme tout seul et la fiche revient (avant, l'écran restait noir jusqu'à un appui sur Retour). Page de réglages simplifiée : les 5 réglages essentiels en haut, le reste dans « Réglages avancés ».",
         "targetAbi": "12.4.0.0",

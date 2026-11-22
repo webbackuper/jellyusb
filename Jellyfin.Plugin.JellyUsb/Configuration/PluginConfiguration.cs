@@ -56,6 +56,15 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets the short text for toasts and notifications when the file is missing.</summary>
     public string ShortMissingFileText { get; set; } = "Fichier introuvable sur le support {mediaId} : « {title} ».";
 
+    /// <summary>
+    /// Gets or sets a value indicating whether the server closes the player of the Android TV app after a
+    /// refused playback (the app otherwise stays on a black player screen until Back is pressed).
+    /// </summary>
+    public bool AndroidTvClosePlayer { get; set; } = true;
+
+    /// <summary>Gets or sets the delay before closing that player, so the message is read first (ms).</summary>
+    public int AndroidTvClosePlayerDelayMs { get; set; } = 1500;
+
     /// <summary>Gets or sets a value indicating whether the Android TV details screen shows the MediaID and the state of its drive.</summary>
     public bool ShowMediaIdOnTvDetails { get; set; } = true;
 

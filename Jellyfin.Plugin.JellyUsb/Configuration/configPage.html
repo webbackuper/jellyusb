@@ -28,6 +28,8 @@
             #JellyUsbConfigPage .jusb-rev-badge{background:#00a4dc;color:#fff;border-radius:1em;padding:.1em .7em;font-size:.85em}
             #JellyUsbConfigPage .jusb-rev-log{margin:.6em 0 0;white-space:pre-wrap;line-height:1.5;opacity:.9}
             #JellyUsbConfigPage .jusb-muted{opacity:.65}
+            #JellyUsbConfigPage .jusb-advanced{margin:1.5em 0 2em;border-top:1px solid rgba(128,128,128,.35);padding-top:1em}
+            #JellyUsbConfigPage .jusb-advanced>summary{cursor:pointer;font-size:1.2em;font-weight:600;padding:.4em 0}
             @media (max-width:1200px){
                 #JellyUsbConfigPage .jusb-head,#JellyUsbConfigPage .jusb-body{grid-template-columns:minmax(0,1fr)}
                 #JellyUsbConfigPage .jusb-img{display:none}
@@ -55,7 +57,7 @@
                 <div data-panel="settings">
                 <form id="JellyUsbConfigForm">
                     <div class="verticalSection">
-                        <h2 class="sectionTitle">Vérification avant lecture</h2>
+                        <h2 class="sectionTitle">Essentiel</h2>
 
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
@@ -71,6 +73,54 @@
                             <label class="inputLabel inputLabelUnfocused" for="BasePath">Chemin de base</label>
                             <input id="BasePath" type="text" is="emby-input" />
                             <div class="fieldDescription">Le MediaID est le nom du dossier qui suit ce chemin (ex. /mnt/usb/<b>MOVIES03</b>/...).</div>
+                        </div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="ShowMediaIdOnTvDetails" type="checkbox" is="emby-checkbox" />
+                                <span>Afficher le disque et son état sur la fiche du film (application Android TV)</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">Une première ligne est ajoutée au résumé, seulement dans ce que reçoit la TV : rien n'est enregistré. Markdown accepté, variable {mediaId}.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="ShortMissingMediaText">Texte court (Android TV, Kodi) : support absent</label>
+                            <input id="ShortMissingMediaText" type="text" is="emby-input" />
+                            <div class="fieldDescription">Android TV coupe ses messages après deux lignes : gardez le MediaID au début.</div>
+                        </div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="AndroidTvClosePlayer" type="checkbox" is="emby-checkbox" />
+                                <span>Android TV : refermer le lecteur après le message</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">L'application Android TV reste sinon sur un écran noir jusqu'à ce qu'on appuie sur Retour.</div>
+                        </div>
+                    </div>
+
+                    <details class="jusb-advanced">
+                        <summary>Réglages avancés</summary>
+                        <p class="fieldDescription">Les valeurs par défaut conviennent dans la plupart des cas.</p>
+
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Textes des messages</h2>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="TvDetailsPresentText">Fiche : disque branché</label>
+                            <input id="TvDetailsPresentText" type="text" is="emby-input" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="TvDetailsAbsentText">Fiche : disque absent</label>
+                            <input id="TvDetailsAbsentText" type="text" is="emby-input" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="TvDetailsFileMissingText">Fiche : fichier introuvable</label>
+                            <input id="TvDetailsFileMissingText" type="text" is="emby-input" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="ShortMissingFileText">Texte court (Android TV, Kodi) : fichier introuvable</label>
+                            <input id="ShortMissingFileText" type="text" is="emby-input" />
                         </div>
 
                         <div class="inputContainer">
@@ -90,36 +140,6 @@
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused" for="MissingFileText">Message : fichier introuvable sur un support présent</label>
                             <textarea id="MissingFileText" is="emby-textarea" rows="3"></textarea>
-                        </div>
-
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="ShortMissingMediaText">Texte court (Android TV, Kodi) : support absent</label>
-                            <input id="ShortMissingMediaText" type="text" is="emby-input" />
-                            <div class="fieldDescription">Android TV coupe ses messages après deux lignes : gardez le MediaID au début.</div>
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="ShortMissingFileText">Texte court (Android TV, Kodi) : fichier introuvable</label>
-                            <input id="ShortMissingFileText" type="text" is="emby-input" />
-                        </div>
-
-                        <div class="checkboxContainer checkboxContainer-withDescription">
-                            <label class="emby-checkbox-label">
-                                <input id="ShowMediaIdOnTvDetails" type="checkbox" is="emby-checkbox" />
-                                <span>Afficher le disque et son état sur la fiche du film (application Android TV)</span>
-                            </label>
-                            <div class="fieldDescription checkboxFieldDescription">Une première ligne est ajoutée au résumé, seulement dans ce que reçoit la TV : rien n'est enregistré. Markdown accepté, variable {mediaId}.</div>
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="TvDetailsPresentText">Fiche : disque branché</label>
-                            <input id="TvDetailsPresentText" type="text" is="emby-input" />
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="TvDetailsAbsentText">Fiche : disque absent</label>
-                            <input id="TvDetailsAbsentText" type="text" is="emby-input" />
-                        </div>
-                        <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="TvDetailsFileMissingText">Fiche : fichier introuvable</label>
-                            <input id="TvDetailsFileMissingText" type="text" is="emby-input" />
                         </div>
 
                         <div class="selectContainer">
@@ -229,6 +249,8 @@
                         </div>
                     </div>
 
+                    </details>
+
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Enregistrer</span>
@@ -264,7 +286,7 @@
                 var pluginId = '9f8d8889-7b20-47d5-ad9a-37807e42e4ce';
                 var page = document.querySelector('#JellyUsbConfigPage');
                 var texts = ['BasePath', 'MissingMediaHeader', 'MissingMediaText', 'MissingFileHeader', 'MissingFileText', 'ShortMissingMediaText', 'ShortMissingFileText', 'WebDisplayMode', 'WebMediaViewName', 'WebMediaButtonName', 'TvDetailsPresentText', 'TvDetailsAbsentText', 'TvDetailsFileMissingText'];
-                var checks = ['EnablePlaybackCheck', 'ShowMediaIdOnTvDetails', 'EnableWebEnhancements', 'WebCloseGenericDialog', 'WebTasksPanel', 'WebMediaView', 'WebMediaButton', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
+                var checks = ['EnablePlaybackCheck', 'ShowMediaIdOnTvDetails', 'AndroidTvClosePlayer', 'EnableWebEnhancements', 'WebCloseGenericDialog', 'WebTasksPanel', 'WebMediaView', 'WebMediaButton', 'EnableNfoEncodingFallback', 'EnableImportRepair', 'UseOnlineTitlesForRepair', 'RepairAfterLibraryScan'];
 
                 var pluginName = 'JellyUSB';
                 var installed = null;   // entry of GET /Plugins

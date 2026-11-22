@@ -209,6 +209,11 @@ public partial class PlaybackGuardMiddleware
             }
 
             SendMessage(sessionManager, auth, client, message, throttleKey, config, context.Connection.RemoteIpAddress?.ToString());
+            if (client == ClientKind.AndroidTv && config.AndroidTvClosePlayer)
+            {
+                ClosePlayerLater(sessionManager, auth, client, config, context.Connection.RemoteIpAddress?.ToString());
+            }
+
             await WritePlaybackInfoErrorAsync(context, "NotAllowed").ConfigureAwait(false);
             return true;
         }
@@ -398,6 +403,35 @@ public partial class PlaybackGuardMiddleware
             => System.Net.IPAddress.TryParse(value, out var ip) ? (ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip).ToString() : value;
 
         return string.Equals(Normalize(endPoint), Normalize(remoteIp), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The Android TV app opens its player before asking for the stream and, for a movie, does not close
+    /// it when the server refuses: it stays on a black screen. A "Stop" command closes it and brings the
+    /// details screen back; it is sent once the message has been shown.
+    /// </summary>
+    private void ClosePlayerLater(ISessionManager sessionManager, AuthorizationInfo auth, ClientKind client, PluginConfiguration config, string? remoteIp)
+    {
+        var session = FindMessageSession(sessionManager, auth, client, remoteIp);
+        if (session is null || !session.SupportsRemoteControl)
+        {
+            return;
+        }
+
+        var sessionId = session.Id;
+        var delay = Math.Clamp(config.AndroidTvClosePlayerDelayMs, 0, 10000);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(delay).ConfigureAwait(false);
+                await sessionManager.SendPlaystateCommand(null!, sessionId, new PlaystateRequest { Command = PlaystateCommand.Stop }, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "JellyUSB: could not close the player of session {Session}", sessionId);
+            }
+        });
     }
 
     private void SendMessage(

@@ -63,7 +63,7 @@ Tests du 21/11/2026 : instance Jellyfin 12.4 jetable, émulateurs Android, Kodi 
 | **Interface web** (navigateur), Jellyfin Media Player | Une seule fenêtre **« Support absent »**. La fenêtre générique « Erreur de lecture » que jellyfin-web ouvre en même temps est fermée automatiquement par le script JellyUSB (depuis la 1.3). |
 | **App Android 2.7.3**, lecteur « Web » | Comme l'interface web |
 | **App Android 2.7.3**, lecteur intégré (par défaut) | Le lecteur reste noir, sans texte (l'app n'affiche pas d'erreur). En revenant en arrière, la fenêtre **« Support absent »** attend dans l'app. Un seul « Compris ». |
-| **Android TV 0.20.0** | Avant de lancer : la fiche du film indique le disque et s'il est branché (depuis la 1.5). En lançant : toast d'environ 3 s, « Insérez le support MOVIES03 : « *Titre* » est absent du serveur. » (texte court, modifiable) |
+| **Android TV 0.20.0** | Avant de lancer : la fiche du film indique le disque et s'il est branché (depuis la 1.5). En lançant : toast d'environ 3 s, « Insérez le support MOVIES03 : « *Titre* » est absent du serveur. » (texte court, modifiable). Depuis la 1.5.1, le serveur referme ensuite le lecteur, qui restait sinon sur un écran noir : la fiche revient d'elle-même. |
 | **Findroid 1.2.0** | Toast technique « Index 0 out of bounds… » : Findroid n'affiche pas les messages du serveur |
 | **Kodi 21.3 + jellyfin-kodi 2.2.0** (mode « add-on ») | Notification **« Support absent »** : « Insérez le support MOVIES03 : « *Titre* » est absent du serveur. » (environ 9 s, texte défilant). Pas d'autre erreur à l'écran. |
 | **Kodi 21.3 + JellyCon 1.0.2** | Notification « Connection Error / NotAllowed » (JellyCon), puis notre texte court dans une notification titrée « JellyCon » (JellyCon remplace notre titre) |
@@ -176,6 +176,10 @@ Player, jellyfin-android). Les applications natives (Android TV, Kodi, Swiftfin�
 
 ## Réglages (page de configuration)
 
+Les réglages essentiels sont en haut de la page : vérification avant lecture, chemin de base, disque
+sur la fiche Android TV, texte du message TV, fermeture du lecteur TV. Tout le reste est dans
+**Réglages avancés**, replié par défaut.
+
 La page s'ouvre directement depuis le menu de gauche du tableau de bord, section **Extensions >
 JellyUSB**. Elle reprend la fiche de l'extension :
 - en haut, le titre, la description et l'image ;
@@ -193,6 +197,7 @@ JellyUSB**. Elle reprend la fiche de l'extension :
 | Délais web / Android TV | 300 / 300 ms | Pour que notre message arrive après la fenêtre ou le toast d'erreur de l'application |
 | Script de l'interface web | oui | Fermeture de la fenêtre générique, panneau des tâches et vue MediaID (désactivables séparément) |
 | Nom de la vue par MediaID | `MediaID` | Texte affiché dans le menu des vues |
+| Android TV : refermer le lecteur | oui (1,5 s) | Après un refus, envoie « Stop » à l'application pour revenir à la fiche au lieu de l'écran noir |
 | Disque sur la fiche Android TV | oui | Ajoute la ligne du disque en tête du résumé ; trois textes modifiables (branché, absent, fichier introuvable), markdown accepté |
 | Bouton du bandeau | oui, `Media` | Ajoute le bouton qui ouvre la vue par MediaID, et règle son nom |
 | Lire les NFO non UTF‑8 en Windows‑1252 | oui | Lecteur « JellyUSB NFO », placé automatiquement avant « Nfo » |

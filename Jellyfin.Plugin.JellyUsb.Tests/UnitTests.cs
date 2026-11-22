@@ -536,3 +536,23 @@ public class UninstallCleanerTests
     }
 }
 
+public class TvMediaViewTests
+{
+    [Fact]
+    public void Ids_are_stable_and_distinct()
+    {
+        Assert.Equal(Web.TvMediaViewMiddleware.MediaGuid("MOVIES03"), Web.TvMediaViewMiddleware.MediaGuid("MOVIES03"));
+        var ids = Enumerable.Range(0, 100).Select(i => Web.TvMediaViewMiddleware.MediaGuid($"MOVIES{i:00}")).ToList();
+        Assert.Equal(100, ids.Distinct().Count());
+        Assert.DoesNotContain(Web.TvMediaViewMiddleware.ViewId, ids);
+    }
+
+    [Fact]
+    public void Collection_text_tells_the_state_and_escapes_the_name()
+    {
+        Assert.Equal("🟢 Disque **MOVIES03** branché · 856 films", Web.TvMediaViewMiddleware.MediaOverview("MOVIES03", true, "856 films"));
+        Assert.Equal("🔴 Disque **MOVIES03** absent : branchez-le pour lire ses 2 films", Web.TvMediaViewMiddleware.MediaOverview("MOVIES03", false, "2 films"));
+        Assert.Contains("A\\*B", Web.TvMediaViewMiddleware.MediaOverview("A*B", true, "1 film"));
+    }
+}
+

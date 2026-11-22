@@ -65,6 +65,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets the delay before closing that player, so the message is read first (ms).</summary>
     public int AndroidTvClosePlayerDelayMs { get; set; } = 1500;
 
+    /// <summary>Gets or sets a value indicating whether the Android TV app gets a "MediaID" tile in My media (one collection per medium).</summary>
+    public bool TvMediaView { get; set; } = true;
+
     /// <summary>Gets or sets a value indicating whether the Android TV details screen shows the MediaID and the state of its drive.</summary>
     public bool ShowMediaIdOnTvDetails { get; set; } = true;
 
@@ -103,6 +106,9 @@ public class PluginConfiguration : BasePluginConfiguration
 
     /// <summary>Gets or sets the label of that button.</summary>
     public string WebMediaButtonName { get; set; } = "Media";
+
+    /// <summary>Gets or sets a value indicating whether the home page of the web client shows a "MediaID" tile in My media.</summary>
+    public bool WebHomeCard { get; set; } = true;
 
     /// <summary>Gets or sets the delay before sending the message to Android TV, so it shows after the error toast.</summary>
     public int AndroidTvMessageDelayMs { get; set; } = 300;

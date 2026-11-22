@@ -24,6 +24,23 @@
       <HintPath>$(JellyfinBinDir)/MediaBrowser.XbmcMetadata.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- shipped with Jellyfin (its image processing): used to turn the MediaID backgrounds into PNG for the TV app -->
+    <Reference Include="SkiaSharp">
+      <HintPath>$(JellyfinBinDir)/SkiaSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Svg.Skia">
+      <HintPath>$(JellyfinBinDir)/Svg.Skia.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Svg.Model">
+      <HintPath>$(JellyfinBinDir)/Svg.Model.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ShimSkiaSharp">
+      <HintPath>$(JellyfinBinDir)/ShimSkiaSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -31,6 +48,7 @@
     <EmbeddedResource Include="Configuration\configPage.html" />
     <None Remove="Web\jellyusb.js" />
     <EmbeddedResource Include="Web\jellyusb.js" />
+    <EmbeddedResource Include="..\assets\jellyusb.png" LogicalName="Jellyfin.Plugin.JellyUsb.jellyusb.png" />
     <InternalsVisibleTo Include="Jellyfin.Plugin.JellyUsb.Tests" />
   </ItemGroup>
 

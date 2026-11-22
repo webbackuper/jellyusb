@@ -26,7 +26,7 @@ python3 -B "$HERE/test-server.py" start "$INSTANCE" "$MEDIA" | tail -1
 python3 -B "$HERE/test-server.py" scan "$INSTANCE" | tail -1
 
 status=0
-for check in playback-checks.py details-checks.py unplug-checks.py; do
+for check in playback-checks.py details-checks.py tvview-checks.py unplug-checks.py; do
     echo "==> $check"
     if ! python3 -B "$HERE/$check" "$INSTANCE" "$MEDIA" > "$WORK/$check.log" 2>&1; then
         grep -E "FAIL|Error|Traceback" "$WORK/$check.log" | head -20 || true

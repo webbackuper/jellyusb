@@ -122,7 +122,7 @@ Jellyfin dans l'état d'avant JellyUSB :
 | Modification | Retirée à la désinstallation |
 |---|---|
 | Dossier du plugin (dll, image) | oui (par Jellyfin) |
-| Script de l'interface web, blocage de la lecture, ligne sur la fiche TV, protection des supports | oui, au redémarrage que Jellyfin demande (rien n'est écrit dans les fichiers de Jellyfin) |
+| Script de l'interface web, blocage de la lecture, ligne sur la fiche TV, tuiles MediaID (web et TV), protection des supports | oui, au redémarrage que Jellyfin demande (rien n'est écrit dans les fichiers de Jellyfin) |
 | Lecteur « JellyUSB NFO » dans l'ordre des lecteurs des bibliothèques | oui |
 | Dépôt de plugins JellyUSB dans les réglages du serveur | oui |
 | Réglages du plugin, dossier cache, fichiers de la tâche planifiée | oui |
@@ -165,7 +165,15 @@ le script se désactive dans la page de configuration.
 
 ## Vue « MediaID » d'une bibliothèque de films
 
-Dans l'interface web, deux accès :
+**Sur la TV (application Android TV)**, qui n'a ni le bandeau ni le menu des vues : une tuile
+**MediaID** (image du plugin) apparaît dans « Mes médias », après les bibliothèques. Elle ouvre la liste
+des disques, chacun avec son image de fond. Un disque s'ouvre sur ses films. Pour l'application, c'est
+une bibliothèque de collections (un disque = une collection), mais elle n'existe que dans les réponses
+du serveur à la TV : rien n'est créé en base, et les films sont les vrais. Le texte d'un disque dit
+s'il est branché et combien il a de films.
+
+Dans l'interface web, trois accès :
+- la tuile **MediaID** dans « Mes médias » de la page d'accueil, après les bibliothèques ;
 - le bouton **Media** du bandeau du haut, après les bibliothèques (Favoris, Films, Collections…), avec
   une icône de disque dur. Il ouvre la vue de la première bibliothèque de films qui a des supports USB,
   et s'affiche en bleu, comme le bouton d'une bibliothèque ouverte, tant qu'on est dans la vue. Il n'y
@@ -218,6 +226,8 @@ JellyUSB**. Elle reprend la fiche de l'extension :
 | Android TV : refermer le lecteur | oui (1,5 s) | Après un refus, envoie « Stop » à l'application pour revenir à la fiche au lieu de l'écran noir |
 | Disque sur la fiche Android TV | oui | Ajoute la ligne du disque en tête du résumé ; trois textes modifiables (branché, absent, fichier introuvable), markdown accepté |
 | Bouton du bandeau | oui, `Media` | Ajoute le bouton qui ouvre la vue par MediaID, et règle son nom |
+| Tuile MediaID (accueil web) | oui | Ajoute la tuile dans « Mes médias » de la page d'accueil |
+| Tuile MediaID (Android TV) | oui | Ajoute la bibliothèque virtuelle « MediaID » dans « Mes médias » de l'application Android TV |
 | Lire les NFO non UTF‑8 en Windows‑1252 | oui | Lecteur « JellyUSB NFO », placé automatiquement avant « Nfo » |
 | Réparer les textes à l'import | oui | Titres, titre original, résumé, slogan, genres, studios, tags, chapitres, pistes |
 | Compléter depuis TheMovieDb | oui | Si ni le NFO ni le titre original ne donnent la lettre, la tâche demande le titre à TheMovieDb (par identifiant) et ne comble les « � » que s'il correspond partout ailleurs |
@@ -277,6 +287,10 @@ main ou par une actualisation depuis TMDb.
   `/Users/{u}/Items/{id}` venant de l'application Android TV (champ `Client` de l'authentification).
   Il ajoute la ligne en tête du champ `Overview` de la réponse JSON, que l'application affiche en
   markdown. Les caractères markdown et HTML d'un MediaID sont échappés.
+- **Tuile Android TV** : `TvMediaViewMiddleware` ajoute la bibliothèque à `GET /UserViews`, et répond
+  lui-même pour ses identifiants, dérivés du MediaID par MD5 : la fiche de la bibliothèque et de chaque
+  disque, `GET /Items?ParentId=…` (les disques, puis les films d'un disque) et les images. Les fonds
+  SVG sont convertis en PNG avec Svg.Skia, que Jellyfin fournit.
 - **Vue MediaID** : le script ajoute une entrée au menu `#library-view-menu` de jellyfin-web. Il
   remplace le contenu de la page par sa vue quand l'adresse contient `jellyusb=media` (et
   `mediaId=…` pour la page d'un support), d'où l'historique du navigateur. Les données viennent de :
@@ -286,7 +300,7 @@ main ou par une actualisation depuis TMDb.
 
 ## Tests
 
-- `Jellyfin.Plugin.JellyUsb.Tests/` : 81 tests unitaires (`dotnet test`).
+- `Jellyfin.Plugin.JellyUsb.Tests/` : 83 tests unitaires (`dotnet test`).
 - `tests/integration/` :
   - `make-media.sh` crée une fausse médiathèque (NFO en Windows‑1252, chapitres doublement encodés) ;
   - `test-server.py` lance une **instance Jellyfin jetable** (port 18096, dossiers séparés, compte de
@@ -294,6 +308,7 @@ main ou par une actualisation depuis TMDb.
   - `playback-checks.py` vérifie le blocage pour chaque famille de client ;
   - `unplug-checks.py` vérifie qu'un disque débranché ne fait retirer aucun film ;
   - `details-checks.py` vérifie la ligne du disque sur la fiche (Android TV seulement, rien en base) ;
+  - `tvview-checks.py` vérifie la tuile MediaID de l'application Android TV (disques, films, images) ;
   - `run-all.sh` lance tout cela sur une instance et une médiathèque neuves, puis les supprime
     (environ 30 s). `release.sh` le lance avant chaque publication et s'arrête au moindre échec.
 

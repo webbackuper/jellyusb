@@ -42,8 +42,36 @@ public class MediaLibraryService
             .ToList();
     }
 
+    /// <summary>
+    /// The media of every movie library the user can see, sorted by MediaID (a MediaID found in two
+    /// libraries is listed once, with the first library).
+    /// </summary>
+    public IReadOnlyList<(Guid LibraryId, LibraryMedia Media)> GetAllMedia(User user)
+    {
+        var all = new List<(Guid LibraryId, LibraryMedia Media)>();
+        var libraries = _libraryManager.GetUserRootFolder().GetChildren(user, true)
+            .OfType<CollectionFolder>()
+            .Where(f => f.CollectionType == CollectionType.movies);
+        foreach (var library in libraries)
+        {
+            foreach (var media in GetMedia(library.Id, user))
+            {
+                if (!all.Any(m => m.Media.MediaId == media.MediaId))
+                {
+                    all.Add((library.Id, media));
+                }
+            }
+        }
+
+        return all.OrderBy(m => m.Media.MediaId, StringComparer.Ordinal).ToList();
+    }
+
     /// <summary>A page of the movies of one medium, as the regular items API returns them.</summary>
     public QueryResult<BaseItemDto>? GetItems(Guid libraryId, string mediaId, User user, int startIndex, int limit, bool newestFirst)
+        => GetItems(libraryId, mediaId, user, startIndex, limit, newestFirst, null);
+
+    /// <summary>Same, with the fields the client asked for.</summary>
+    public QueryResult<BaseItemDto>? GetItems(Guid libraryId, string mediaId, User user, int startIndex, int limit, bool newestFirst, IReadOnlyList<ItemFields>? fields)
     {
         var folder = GetMediaFolders(libraryId, user).FirstOrDefault(m => m.MediaId == mediaId).Folder;
         if (folder is null)
@@ -67,7 +95,7 @@ public class MediaLibraryService
         var result = _libraryManager.GetItemsResult(query);
         var dtoOptions = new DtoOptions(false)
         {
-            Fields = [ItemFields.PrimaryImageAspectRatio],
+            Fields = fields is { Count: > 0 } ? fields.Append(ItemFields.PrimaryImageAspectRatio).Distinct().ToArray() : [ItemFields.PrimaryImageAspectRatio],
             EnableImages = true,
             EnableUserData = true,
             ImageTypeLimit = 1,

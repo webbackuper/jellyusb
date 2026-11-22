@@ -8,10 +8,11 @@
  * 3. In a movie library, add a "MediaID" view to the view menu (top left): one row per USB medium,
  *    each with its background; a click on a medium shows all its movies, with a way back.
  * 4. Add a "Media" button to the header, after the library buttons, that opens that view.
+ * 5. Add a "MediaID" tile to "My media" on the home page, after the libraries, that opens it too.
  */
 (function () {
     'use strict';
-    var SETTINGS = /*JELLYUSB_SETTINGS*/null || { headers: ['Support absent', 'Fichier introuvable'], closeGenericDialog: true, tasksPanel: true, mediaView: true, mediaViewName: 'MediaID', mediaButton: true, mediaButtonName: 'Media' };
+    var SETTINGS = /*JELLYUSB_SETTINGS*/null || { headers: ['Support absent', 'Fichier introuvable'], closeGenericDialog: true, tasksPanel: true, mediaView: true, mediaViewName: 'MediaID', mediaButton: true, mediaButtonName: 'Media', homeCard: true };
     var OURS = SETTINGS.headers.filter(Boolean).map(function (h) { return h.trim(); });
     var WINDOW_MS = 6000;
 
@@ -682,6 +683,43 @@
     if (SETTINGS.mediaView && SETTINGS.mediaButton) {
         setInterval(ensureHeaderButton, 500);
         window.addEventListener('hashchange', function () { setTimeout(ensureHeaderButton, 50); });
+    }
+
+    /* ---------- 5. "MediaID" tile in My media (home page) ---------- */
+    var HOME_CARD_ID = 'jellyusbHomeCard';
+
+    function ensureHomeCard() {
+        var existing = document.getElementById(HOME_CARD_ID);
+        var onHome = /^#\/home(\?|$)/.test(location.hash || '') && !/tab=1/.test(location.hash || '');
+        findMediaLibrary();
+        if (!onHome || !headerLibrary.id) { if (existing && !onHome) { existing.remove(); } return; }
+
+        // "My media": the row whose cards are the libraries
+        var libraryCard = document.querySelector('.card[data-type="CollectionFolder"], .card[data-type="UserView"]');
+        var container = libraryCard && libraryCard.parentElement;
+        if (!container) { return; }
+        var href = '#/movies?topParentId=' + encodeURIComponent(headerLibrary.id) + '&collectionType=movies&jellyusb=media';
+        var name = SETTINGS.mediaViewName || 'MediaID';
+        if (existing && existing.parentElement === container && existing === container.lastElementChild) { return; }
+        if (existing) { existing.remove(); }
+
+        // same markup and classes as jellyfin-web's library cards, without their actions
+        var card = document.createElement('div');
+        card.id = HOME_CARD_ID;
+        card.className = libraryCard.className.split(' ').filter(function (c) { return c === 'card' || /Card$/.test(c) || c === 'card-hoverable'; }).join(' ');
+        card.innerHTML = '<div class="cardBox cardBox-bottompadded"><div class="cardScalable">'
+            + '<div class="cardPadder cardPadder-overflowBackdrop"></div>'
+            + '<a href="' + esc(href) + '" class="cardImageContainer coveredImage cardContent" role="img" aria-label="' + esc(name) + '"'
+            + ' style="background-image:url(\'' + esc(window.ApiClient.getUrl('JellyUsb/Image', { v: SETTINGS.version || '1' })) + '\')"></a>'
+            + '</div><div class="cardText cardTextCentered cardText-first"><bdi>'
+            + '<a href="' + esc(href) + '" class="textActionButton" title="' + esc(name) + '">' + esc(name) + '</a>'
+            + '</bdi></div></div>';
+        container.appendChild(card);
+    }
+
+    if (SETTINGS.mediaView && SETTINGS.homeCard) {
+        setInterval(ensureHomeCard, 700);
+        window.addEventListener('hashchange', function () { setTimeout(ensureHomeCard, 100); });
     }
 })();
 

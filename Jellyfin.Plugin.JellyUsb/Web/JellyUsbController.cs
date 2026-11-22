@@ -52,6 +52,7 @@ public class JellyUsbController : ControllerBase
             mediaViewName = config.WebMediaViewName,
             mediaButton = config.WebMediaButton,
             mediaButtonName = config.WebMediaButtonName,
+            homeCard = config.WebHomeCard,
             version = typeof(JellyUsbController).Assembly.GetName().Version?.ToString()
         });
         var script = reader.ReadToEnd().Replace("/*JELLYUSB_SETTINGS*/null", settings, System.StringComparison.Ordinal);
@@ -101,6 +102,16 @@ public class JellyUsbController : ControllerBase
         var newest = string.Equals(sortBy, "DateCreated", StringComparison.OrdinalIgnoreCase);
         var result = _media.GetItems(libraryId, mediaId, user, startIndex, limit, newest);
         return result is null ? NotFound() : Ok(result);
+    }
+
+    /// <summary>The plugin image (PNG), for the "MediaID" tile of My media (anonymous, like Jellyfin's images).</summary>
+    [HttpGet("Image")]
+    [AllowAnonymous]
+    [Produces("image/png")]
+    public IActionResult GetPluginImage()
+    {
+        Response.Headers.CacheControl = "public, max-age=86400";
+        return File(MediaImages.PluginPng(), "image/png");
     }
 
     /// <summary>The background image of a MediaID (anonymous, like Jellyfin's own images: it only shows the name).</summary>

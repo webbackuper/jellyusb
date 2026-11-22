@@ -63,7 +63,7 @@ Tests du 21/11/2026 : instance Jellyfin 12.4 jetable, émulateurs Android, Kodi 
 
 | Client | Ce que voit l'utilisateur quand le support est absent |
 |---|---|
-| **Interface web** (navigateur), Jellyfin Media Player | Une seule fenêtre **« Support absent »**. La fenêtre générique « Erreur de lecture » que jellyfin-web ouvre en même temps est fermée automatiquement par le script JellyUSB (depuis la 1.3). |
+| **Interface web** (navigateur), Jellyfin Media Player | Une seule fenêtre, **« Support absent »**, au design de Jellyfin. Depuis la 1.5.3, le script JellyUSB lit le message dans la réponse du serveur et l'écrit dans la fenêtre « Erreur de lecture » de jellyfin-web avant son affichage : la fenêtre générique n'apparaît plus du tout, même sans connexion temps réel. |
 | **App Android 2.7.3**, lecteur « Web » | Comme l'interface web |
 | **App Android 2.7.3**, lecteur intégré (par défaut) | Le lecteur reste noir, sans texte (l'app n'affiche pas d'erreur). En revenant en arrière, la fenêtre **« Support absent »** attend dans l'app. Un seul « Compris ». |
 | **Android TV 0.20.0** | Avant de lancer : la fiche du film indique le disque et s'il est branché (depuis la 1.5). En lançant : toast d'environ 3 s, « Insérez le support MOVIES03 : « *Titre* » est absent du serveur. » (texte court, modifiable). Depuis la 1.5.1, le serveur referme ensuite le lecteur, qui restait sinon sur un écran noir : la fiche revient d'elle-même. |
@@ -114,7 +114,22 @@ Ce que fait `install.sh` :
 4. déclare le dépôt de plugins JellyUSB (fiche du plugin et mises à jour dans le tableau de bord) ;
 5. redémarre Jellyfin et vérifie que le plugin est chargé.
 
-Pour désinstaller : `sudo ./install.sh --uninstall`.
+### Désinstallation
+
+Le bouton **Désinstaller** (page JellyUSB ou *Extensions*) ou `sudo ./install.sh --uninstall` remet
+Jellyfin dans l'état d'avant JellyUSB :
+
+| Modification | Retirée à la désinstallation |
+|---|---|
+| Dossier du plugin (dll, image) | oui (par Jellyfin) |
+| Script de l'interface web, blocage de la lecture, ligne sur la fiche TV, protection des supports | oui, au redémarrage que Jellyfin demande (rien n'est écrit dans les fichiers de Jellyfin) |
+| Lecteur « JellyUSB NFO » dans l'ordre des lecteurs des bibliothèques | oui |
+| Dépôt de plugins JellyUSB dans les réglages du serveur | oui |
+| Réglages du plugin, dossier cache, fichiers de la tâche planifiée | oui |
+| Titres réparés (accents) dans la base | **non**, ce sont des corrections. La base d'avant l'installation peut être restaurée depuis `data/jellyusb-backup-*`, mais les changements faits depuis seront perdus |
+| Sauvegardes `data/jellyusb-backup-*` (créées par `install.sh`) | avec `sudo ./install.sh --uninstall --purge` |
+| Montage des disques (`os/`) | à part : `sudo ./os/install-os.sh --uninstall` |
+| Fichiers des disques USB | rien à retirer : le plugin n'y écrit jamais |
 
 Après l'installation :
 1. Ouvrir *Tableau de bord > Extensions > JellyUSB* et vérifier les réglages.
@@ -271,7 +286,7 @@ main ou par une actualisation depuis TMDb.
 
 ## Tests
 
-- `Jellyfin.Plugin.JellyUsb.Tests/` : 79 tests unitaires (`dotnet test`).
+- `Jellyfin.Plugin.JellyUsb.Tests/` : 81 tests unitaires (`dotnet test`).
 - `tests/integration/` :
   - `make-media.sh` crée une fausse médiathèque (NFO en Windows‑1252, chapitres doublement encodés) ;
   - `test-server.py` lance une **instance Jellyfin jetable** (port 18096, dossiers séparés, compte de

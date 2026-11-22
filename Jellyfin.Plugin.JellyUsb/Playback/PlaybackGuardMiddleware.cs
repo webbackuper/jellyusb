@@ -200,8 +200,15 @@ public partial class PlaybackGuardMiddleware
 
             if (client == ClientKind.WebUi)
             {
-                // jellyfin-web shows one generic dialog for a failed request; our message opens on top of it.
-                SendMessage(sessionManager, auth, client, message, throttleKey, config, context.Connection.RemoteIpAddress?.ToString());
+                // jellyfin-web shows one generic dialog for a failed request. The JellyUSB script reads the
+                // message from this header and writes it into that dialog; the message sent through the
+                // websocket is the fallback when the script is not there.
+                context.Response.Headers["X-JellyUsb-Message"] = EncodeMessageHeader(message);
+                if (!context.Request.Headers.ContainsKey("X-JellyUsb-Script"))
+                {
+                    SendMessage(sessionManager, auth, client, message, throttleKey, config, context.Connection.RemoteIpAddress?.ToString());
+                }
+
                 context.Response.StatusCode = StatusCodes.Status404NotFound;
                 context.Response.ContentType = "text/plain; charset=utf-8";
                 await context.Response.WriteAsync(message.Header + " : " + message.Text, context.RequestAborted).ConfigureAwait(false);
@@ -226,6 +233,10 @@ public partial class PlaybackGuardMiddleware
         await context.Response.WriteAsync(message.Header + " : " + message.Text, context.RequestAborted).ConfigureAwait(false);
         return true;
     }
+
+    /// <summary>The message as URI-encoded JSON (HTTP header values are ASCII).</summary>
+    internal static string EncodeMessageHeader(UserMessage message)
+        => Uri.EscapeDataString(JsonSerializer.Serialize(new { header = message.Header, text = message.Text }));
 
     private static string GetTitle(BaseItem item)
     {

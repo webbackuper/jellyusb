@@ -2,7 +2,9 @@
 # Installe (ou désinstalle) le plugin JellyUSB dans le Jellyfin de cette machine.
 #
 #   sudo ./install.sh              installe la version compilée (dotnet build -c Release)
-#   sudo ./install.sh --uninstall  retire le plugin (la configuration est conservée)
+#   sudo ./install.sh --uninstall  retire le plugin et ce qu'il a changé dans Jellyfin (réglages,
+#                                  lecteur NFO, dépôt) ; --uninstall --purge supprime aussi les
+#                                  sauvegardes de la base
 #
 # Étapes : arrêt de Jellyfin, sauvegarde de la base (jellyfin.db + -wal/-shm), copie du plugin
 # dans /var/lib/jellyfin/plugins/JellyUSB_<version>/, redémarrage, vérification du chargement.
@@ -44,14 +46,49 @@ wait_for_jellyfin() {
 }
 
 if [ "${1:-}" = "--uninstall" ]; then
+    # The same clean-up as Jellyfin's "Uninstall" button (UninstallCleaner), for a plugin removed by hand.
+    PURGE="${2:-}"
+    CACHE_DIR="${JELLYFIN_CACHE_DIR:-/var/cache/jellyfin}"
+    TASK_FILE="d0955d59-099a-46bd-a6a0-6a1886aacefd.js"   # "Réparer les titres mal encodés"
     info "Arrêt de Jellyfin"
     systemctl stop jellyfin
     rm -rf "$PLUGINS_DIR"/JellyUSB_*
-    info "Plugin retiré (configuration conservée dans $PLUGINS_DIR/configurations/Jellyfin.Plugin.JellyUsb.xml)"
-    info "Pensez à retirer « JellyUSB NFO » de l'ordre des lecteurs de métadonnées si Jellyfin l'affiche encore."
+    info "Plugin retiré"
+    rm -f "$PLUGINS_DIR/configurations/Jellyfin.Plugin.JellyUsb.xml" \
+          "$DATA_DIR/data/ScheduledTasks/$TASK_FILE" "$CONFIG_DIR/ScheduledTasks/$TASK_FILE"
+    rm -rf "$CACHE_DIR/jellyusb"
+    info "Réglages, cache et fichiers de la tâche planifiée supprimés"
+    python3 -I - "$DATA_DIR/root/default" "$CONFIG_DIR/system.xml" <<'PYEOF'
+import glob, os, re, sys
+views, system = sys.argv[1:3]
+for path in glob.glob(os.path.join(views, "*", "options.xml")):
+    text = open(path, encoding="utf-8").read()
+    new = re.sub(r"^[ \t]*<string>JellyUSB NFO</string>[ \t]*\r?\n", "", text, flags=re.M)
+    if new != text:
+        open(path, "w", encoding="utf-8").write(new)
+        print("==> Lecteur « JellyUSB NFO » retiré de " + os.path.basename(os.path.dirname(path)))
+if os.path.exists(system):
+    text = open(system, encoding="utf-8").read()
+    new = re.sub(r"[ \t]*<RepositoryInfo>(?:(?!</RepositoryInfo>).)*webbackuper/jellyusb(?:(?!</RepositoryInfo>).)*</RepositoryInfo>[ \t]*\r?\n",
+                 "", text, flags=re.S)
+    if new != text:
+        open(system, "w", encoding="utf-8").write(new)
+        print("==> Dépôt de plugins JellyUSB retiré de system.xml")
+PYEOF
+    if [ "$PURGE" = "--purge" ]; then
+        rm -rf "$DB_DIR"/jellyusb-backup-*
+        info "Sauvegardes jellyusb-backup-* supprimées"
+    else
+        BACKUPS="$(ls -d "$DB_DIR"/jellyusb-backup-* 2>/dev/null | tr '\n' ' ' || true)"
+        [ -n "$BACKUPS" ] && info "Sauvegardes conservées (--purge pour les supprimer) : $BACKUPS"
+    fi
     systemctl start jellyfin
     wait_for_jellyfin
-    info "Terminé."
+    echo "==> Terminé. Il ne reste de JellyUSB dans Jellyfin que :"
+    echo "    - les titres réparés dans la base. Pour retrouver la base d'avant l'installation (les"
+    echo "      changements faits depuis seront perdus) : sudo systemctl stop jellyfin ;"
+    echo "      sudo cp -a <sauvegarde>/jellyfin.db* $DB_DIR/ ; sudo systemctl start jellyfin"
+    echo "    - le montage des disques, s'il a été installé : sudo ./os/install-os.sh --uninstall"
     exit 0
 fi
 

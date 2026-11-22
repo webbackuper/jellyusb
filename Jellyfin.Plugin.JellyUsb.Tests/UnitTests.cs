@@ -506,3 +506,33 @@ public class FileSystemProtectionTests
         => Assert.Null(PluginServiceRegistrator.CheckManagedFileSystem());
 }
 
+public class UninstallCleanerTests
+{
+    [Fact]
+    public void Reader_is_removed_from_both_lists_and_others_are_kept()
+    {
+        var options = new MediaBrowser.Model.Configuration.LibraryOptions
+        {
+            LocalMetadataReaderOrder = ["JellyUSB NFO", "Nfo"],
+            DisabledLocalMetadataReaders = ["JellyUSB NFO"]
+        };
+        Assert.True(UninstallCleaner.RemoveReader(options, "JellyUSB NFO"));
+        Assert.Equal(["Nfo"], options.LocalMetadataReaderOrder);
+        Assert.Empty(options.DisabledLocalMetadataReaders);
+        Assert.False(UninstallCleaner.RemoveReader(options, "JellyUSB NFO"));
+    }
+
+    [Fact]
+    public void Only_the_jellyusb_repository_is_removed()
+    {
+        var repos = new[]
+        {
+            new MediaBrowser.Model.Updates.RepositoryInfo { Name = "Jellyfin Stable", Url = "https://repo.jellyfin.org/files/plugin/manifest.json" },
+            new MediaBrowser.Model.Updates.RepositoryInfo { Name = "JellyUSB", Url = "https://raw.githubusercontent.com/webbackuper/jellyusb/main/manifest.json" }
+        };
+        var kept = UninstallCleaner.WithoutJellyUsb(repos);
+        Assert.Single(kept);
+        Assert.Equal("Jellyfin Stable", kept[0].Name);
+    }
+}
+

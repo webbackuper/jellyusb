@@ -112,7 +112,8 @@ def start(instance, media):
   <EnableUPnP>false</EnableUPnP>
 </NetworkConfiguration>
 """)
-    install_plugin(instance)
+    if os.environ.get("JELLYUSB_NO_PLUGIN") != "1":  # 1: start without the plugin (uninstall check)
+        install_plugin(instance)
     log = open(os.path.join(instance, "stdout.log"), "ab")
     # Jellyfin's temp folder is <TMPDIR>/jellyfin: never let the test instance create the server's one.
     tmpdir = os.path.join(instance, "tmp")
@@ -127,6 +128,13 @@ def start(instance, media):
     info = wait_up()
     print(f"Jellyfin {info.get('Version')} up on {URL} (pid {proc.pid})")
     if not first:
+        # the plugin settings may have been deleted (uninstall check): point JellyUSB at the test media again
+        if os.environ.get("JELLYUSB_NO_PLUGIN") != "1":
+            token = creds(instance)["token"]
+            cfg = call("GET", f"/Plugins/{PLUGIN_ID}/Configuration", token=token)
+            if cfg.get("BasePath") != media.rstrip("/") + "/":
+                cfg["BasePath"] = media.rstrip("/") + "/"
+                call("POST", f"/Plugins/{PLUGIN_ID}/Configuration", cfg, token=token)
         return
 
     password = secrets.token_urlsafe(12)

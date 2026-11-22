@@ -42,8 +42,11 @@ public class ImportRepairService : IHostedService, IDisposable
         ILibraryManager libraryManager,
         ITaskManager taskManager,
         IServerConfigurationManager serverConfig,
-        ItemTextRepairer repairer)
+        ItemTextRepairer repairer,
+        UninstallCleaner uninstallCleaner)
     {
+        // created at startup so that it is ready when Jellyfin uninstalls the plugin
+        _ = uninstallCleaner;
         _logger = logger;
         _libraryManager = libraryManager;
         _taskManager = taskManager;
@@ -114,7 +117,7 @@ public class ImportRepairService : IHostedService, IDisposable
     /// </summary>
     private void EnsureReaderOrder()
     {
-        if (!Plugin.CurrentConfiguration.EnableNfoEncodingFallback)
+        if (!Plugin.CurrentConfiguration.EnableNfoEncodingFallback || UninstallCleaner.IsUninstalling)
         {
             return;
         }

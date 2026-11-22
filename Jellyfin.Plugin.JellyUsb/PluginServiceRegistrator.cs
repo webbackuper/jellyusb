@@ -30,6 +30,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<Web.ActivityService>();
         serviceCollection.AddSingleton<Web.MediaLibraryService>();
         serviceCollection.AddSingleton<ItemTextRepairer>();
+        serviceCollection.AddSingleton<UninstallCleaner>();
         serviceCollection.AddHostedService<ImportRepairService>();
     }
 

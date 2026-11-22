@@ -7,11 +7,15 @@
 <body>
     <div id="JellyUsbConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox,emby-textarea">
         <style>
-            #JellyUsbConfigPage .jusb-head{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1.5em;align-items:start;margin:1em 0 1.5em}
-            #JellyUsbConfigPage .jusb-head h1{margin:0 0 .5em}
-            #JellyUsbConfigPage .jusb-head p{margin:0;max-width:80ch;line-height:1.5}
-            #JellyUsbConfigPage .jusb-img{width:100%;border-radius:.4em;display:block}
-            #JellyUsbConfigPage .jusb-body{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1.5em;align-items:start}
+            /* one grid: the image sits at the top of the right column, so the tabs follow the description */
+            #JellyUsbConfigPage .jusb-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);grid-template-areas:"intro side" "main side";grid-template-rows:auto 1fr;column-gap:1.5em;margin-top:1em}
+            #JellyUsbConfigPage .jusb-intro{grid-area:intro;margin-bottom:1.2em}
+            #JellyUsbConfigPage .jusb-main{grid-area:main;min-width:0}
+            #JellyUsbConfigPage .jusb-side{grid-area:side;align-self:start}
+            #JellyUsbConfigPage .jusb-intro h1{margin:0 0 .5em}
+            #JellyUsbConfigPage .jusb-intro p{margin:0;max-width:80ch;line-height:1.5}
+            #JellyUsbConfigPage .jusb-img{width:100%;border-radius:.4em;display:block;margin-bottom:.8em}
+            #JellyUsbConfigPage .jusb-img[hidden]{display:none}
             #JellyUsbConfigPage .jusb-tabs{display:flex;gap:.3em;border-bottom:1px solid rgba(128,128,128,.35);margin-bottom:1.2em}
             #JellyUsbConfigPage .jusb-tab{background:none;border:0;border-bottom:3px solid transparent;color:inherit;font:inherit;padding:.6em 1em;cursor:pointer;opacity:.75}
             #JellyUsbConfigPage .jusb-tab.active{border-bottom-color:#00a4dc;opacity:1;font-weight:600}
@@ -31,21 +35,18 @@
             #JellyUsbConfigPage .jusb-advanced{margin:1.5em 0 2em;border-top:1px solid rgba(128,128,128,.35);padding-top:1em}
             #JellyUsbConfigPage .jusb-advanced>summary{cursor:pointer;font-size:1.2em;font-weight:600;padding:.4em 0}
             @media (max-width:1200px){
-                #JellyUsbConfigPage .jusb-head,#JellyUsbConfigPage .jusb-body{grid-template-columns:minmax(0,1fr)}
+                #JellyUsbConfigPage .jusb-layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"intro" "side" "main";grid-template-rows:auto}
                 #JellyUsbConfigPage .jusb-img{display:none}
-                #JellyUsbConfigPage .jusb-side{order:-1}
+                #JellyUsbConfigPage .jusb-side{margin-bottom:1.2em}
             }
         </style>
         <div data-role="content">
             <div class="content-primary">
-                <div class="jusb-head">
-                    <div>
-                        <h1 id="JusbName">JellyUSB</h1>
-                        <p id="JusbDescription"></p>
-                    </div>
-                    <img id="JusbImage" class="jusb-img" alt="JellyUSB" hidden />
+                <div class="jusb-layout">
+                <div class="jusb-intro">
+                    <h1 id="JusbName">JellyUSB</h1>
+                    <p id="JusbDescription"></p>
                 </div>
-                <div class="jusb-body">
                 <div class="jusb-main">
                 <div class="jusb-tabs" role="tablist">
                     <button type="button" class="jusb-tab active" role="tab" data-tab="settings">Paramètres</button>
@@ -260,6 +261,7 @@
                 </div>
                 </div>
                 <aside class="jusb-side">
+                    <img id="JusbImage" class="jusb-img" alt="JellyUSB" hidden />
                     <div class="checkboxContainer" style="margin:0">
                         <label class="emby-checkbox-label">
                             <input id="JusbEnabled" type="checkbox" is="emby-checkbox" />

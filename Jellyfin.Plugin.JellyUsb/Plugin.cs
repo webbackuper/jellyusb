@@ -33,6 +33,16 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override string Description =>
         "Vérifie la présence du support USB (MediaID) avant la lecture et répare les caractères accentués.";
 
+    /// <summary>
+    /// Called by Jellyfin when the plugin is uninstalled, before it deletes the plugin folder: undoes what
+    /// JellyUSB changed elsewhere (see <see cref="UninstallCleaner"/>).
+    /// </summary>
+    public override void OnUninstalling()
+    {
+        UninstallCleaner.Current?.Run(ConfigurationFilePath);
+        base.OnUninstalling();
+    }
+
     /// <summary>Gets the current plugin instance.</summary>
     public static Plugin? Instance { get; private set; }
 

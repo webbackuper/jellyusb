@@ -1,6 +1,8 @@
 /* JellyUSB — added to jellyfin-web by the JellyUSB server plugin.
- * 1. When the JellyUSB message ("Support absent" / "Fichier introuvable") opens, close the generic
- *    "Playback error" dialog that jellyfin-web always shows when a playback is refused.
+ * 1. When a playback is refused, jellyfin-web opens its generic "Playback error" dialog: the script
+ *    writes the JellyUSB message ("Support absent" / "Fichier introuvable", read from the server's
+ *    answer) into that dialog before it is drawn, so only one dialog shows, in Jellyfin's design. The
+ *    same message also arrives through the websocket: that duplicate is closed unseen.
  * 2. On Dashboard > Scheduled Tasks, show the running tasks at the top, with what keeps each USB
  *    medium busy (so you know why a drive cannot be unmounted).
  * 3. In a movie library, add a "MediaID" view to the view menu (top left): one row per USB medium,
@@ -16,6 +18,76 @@
     /* ---------- 1. dialogs ---------- */
     var oursShownAt = 0;
     var recentOthers = [];
+    var REPLACE_MS = 8000;
+    var pending = null;          // { header, text, at, replaced }: refusal read from the server's answer
+    var hideBackdropUntil = 0;
+
+    function readRefusal(header) {
+        try {
+            if (header) {
+                var m = JSON.parse(decodeURIComponent(header));
+                pending = { header: m.header, text: m.text, at: Date.now(), replaced: null };
+            }
+        } catch (e) { /* not ours */ }
+    }
+
+    // The refusal is read as soon as the answer arrives, before jellyfin-web handles it (its error
+    // dialog comes after, in a later step), whatever it uses to ask: XMLHttpRequest or fetch.
+    if (SETTINGS.closeGenericDialog) {
+        // The playback request says the script is here: the server then does not send the same message
+        // through the websocket (it would open a second dialog).
+        var PLAYBACK_INFO = /\/Items\/[0-9a-fA-F-]{32,36}\/PlaybackInfo/;
+        if (window.XMLHttpRequest) {
+            var nativeOpen = XMLHttpRequest.prototype.open;
+            var nativeSend = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (method, url) {
+                this.__jellyusbUrl = String(url || '');
+                return nativeOpen.apply(this, arguments);
+            };
+            XMLHttpRequest.prototype.send = function () {
+                var xhr = this;
+                if (PLAYBACK_INFO.test(xhr.__jellyusbUrl || '')) {
+                    try { xhr.setRequestHeader('X-JellyUsb-Script', '1'); } catch (e) { /* ignore */ }
+                }
+                xhr.addEventListener('readystatechange', function () {
+                    if (xhr.readyState === 4 && xhr.status === 404) {
+                        try { readRefusal(xhr.getResponseHeader('X-JellyUsb-Message')); } catch (e) { /* ignore */ }
+                    }
+                });
+                return nativeSend.apply(this, arguments);
+            };
+        }
+        if (window.fetch) {
+            var nativeFetch = window.fetch;
+            window.fetch = function (input, init) {
+                var url = typeof input === 'string' ? input : (input && input.url) || '';
+                if (PLAYBACK_INFO.test(url) && typeof Headers !== 'undefined' && !(input instanceof Request)) {
+                    init = Object.assign({}, init || {});
+                    var headers = new Headers(init.headers || {});
+                    headers.set('X-JellyUsb-Script', '1');
+                    init.headers = headers;
+                }
+                var call = init === undefined ? nativeFetch.call(this, input) : nativeFetch.call(this, input, init);
+                return call.then(function (r) {
+                    if (r && r.status === 404 && r.headers) { readRefusal(r.headers.get('X-JellyUsb-Message')); }
+                    return r;
+                });
+            };
+        }
+    }
+
+    function rewrite(dlg, m) {
+        var title = dlg.querySelector('.formDialogHeaderTitle');
+        if (title) { title.textContent = m.header; }
+        var text = dlg.querySelector('.dialogContentInner .text') || dlg.querySelector('.dialogContentInner');
+        if (text) { text.textContent = m.text; text.style.whiteSpace = 'pre-line'; }
+    }
+
+    function hideNow(dlg) {
+        var container = dlg.closest('.dialogContainer') || dlg;
+        container.style.visibility = 'hidden';
+        hideBackdropUntil = Date.now() + 1000;   // its backdrop is added right after it
+    }
 
     function dialogTitle(dlg) {
         var el = dlg.querySelector('.formDialogHeaderTitle');
@@ -35,10 +107,27 @@
     }
 
     function onDialog(dlg) {
-        if (dlg.__jellyusbSeen) { return; }
+        if (dlg.__jellyusbSeen || dlg.__jellyusbRewritten) { return; }
         dlg.__jellyusbSeen = true;
         var now = Date.now();
         var title = dialogTitle(dlg);
+
+        if (pending && now - pending.at < REPLACE_MS) {
+            var isOurs = OURS.indexOf(title) >= 0;
+            if (isOurs && pending.replaced && document.body.contains(pending.replaced)) {
+                // the same message, through the websocket: already shown in jellyfin-web's dialog
+                hideNow(dlg);
+                setTimeout(function () { closeDialog(dlg); }, 0);
+                return;
+            }
+            if (!isOurs && !pending.replaced && isSimpleAlert(dlg)) {
+                rewrite(dlg, pending);
+                pending.replaced = dlg;
+                dlg.__jellyusbRewritten = true;
+                oursShownAt = now;
+                return;
+            }
+        }
         if (OURS.indexOf(title) >= 0) {
             oursShownAt = now;
             recentOthers.forEach(function (o) { if (now - o.at < WINDOW_MS) { closeDialog(o.dlg); } });
@@ -57,6 +146,11 @@
 
     function scan(node) {
         if (!(node instanceof HTMLElement)) { return; }
+        if (node.classList.contains('dialogBackdrop') && Date.now() < hideBackdropUntil) {
+            node.style.visibility = 'hidden';
+            hideBackdropUntil = 0;
+            return;
+        }
         if (node.classList.contains('dialog')) { onDialog(node); }
         var inner = node.querySelectorAll ? node.querySelectorAll('.dialog') : [];
         for (var i = 0; i < inner.length; i++) { onDialog(inner[i]); }

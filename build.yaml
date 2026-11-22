@@ -1,7 +1,7 @@
 ---
 name: "JellyUSB"
 guid: "9f8d8889-7b20-47d5-ad9a-37807e42e4ce"
-version: "1.5.0.0"
+version: "1.5.1.0"
 targetAbi: "12.4.0.0"
 framework: "net10.0"
 overview: "Vérifie la présence du support USB avant la lecture et répare les caractères accentués"

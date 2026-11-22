@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.5.1.0",
+        "changelog": "Android TV : après un refus de lecture, le lecteur se referme tout seul et la fiche revient (avant, l'écran restait noir jusqu'à un appui sur Retour). Page de réglages simplifiée : les 5 réglages essentiels en haut, le reste dans « Réglages avancés ».",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.5.1.0/jellyusb_1.5.1.0.zip",
+        "checksum": "68e1fdbfb2cd5b6bd3dea53a0bc0263e",
+        "timestamp": "2026-11-22T01:20:28Z"
+      },
+      {
         "version": "1.5.0.0",
         "changelog": "Fiche Android TV : le résumé d'un film commence par son disque et son état (« 🟢 Disque MOVIES03 branché » ou « 🔴 Disque MOVIES03 absent : branchez-le pour lire ce film »). Rien n'est enregistré : seul ce que reçoit la TV change.",
         "targetAbi": "12.4.0.0",

@@ -3,6 +3,14 @@
     "guid": "9f8d8889-7b20-47d5-ad9a-37807e42e4ce",
     "versions": [
       {
+        "version": "1.6.0.0",
+        "changelog": "Tuile MediaID dans « Mes médias » : sur Android TV, une médiathèque MediaID liste les disques (avec leur fond et leur état) puis leurs films ; sur le web, une tuile ouvre la vue par MediaID. Réglages pour désactiver chacune.",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/webbackuper/jellyusb/releases/download/v1.6.0.0/jellyusb_1.6.0.0.zip",
+        "checksum": "dbab6bfe3afa430453b8ce3417d96a15",
+        "timestamp": "2026-11-22T07:05:13Z"
+      },
+      {
         "version": "1.5.3.0",
         "changelog": "Interface web : une seule fenêtre « Support absent », sans la fenêtre générique « Erreur de lecture » (même sans connexion temps réel). Page du plugin plus compacte. Désinstallation complète : lecteur NFO, dépôt, réglages, cache et tâche sont retirés ; install.sh --uninstall fait de même (--purge pour les sauvegardes).",
         "targetAbi": "12.4.0.0",

@@ -49,7 +49,10 @@ public class JellyUsbController : ControllerBase
             closeGenericDialog = config.WebCloseGenericDialog,
             tasksPanel = config.WebTasksPanel,
             mediaView = config.WebMediaView,
-            mediaViewName = config.WebMediaViewName
+            mediaViewName = config.WebMediaViewName,
+            mediaButton = config.WebMediaButton,
+            mediaButtonName = config.WebMediaButtonName,
+            version = typeof(JellyUsbController).Assembly.GetName().Version?.ToString()
         });
         var script = reader.ReadToEnd().Replace("/*JELLYUSB_SETTINGS*/null", settings, System.StringComparison.Ordinal);
         Response.Headers.CacheControl = "no-cache";

@@ -5,10 +5,11 @@
  *    medium busy (so you know why a drive cannot be unmounted).
  * 3. In a movie library, add a "MediaID" view to the view menu (top left): one row per USB medium,
  *    each with its background; a click on a medium shows all its movies, with a way back.
+ * 4. Add a "Media" button to the header, after the library buttons, that opens that view.
  */
 (function () {
     'use strict';
-    var SETTINGS = /*JELLYUSB_SETTINGS*/null || { headers: ['Support absent', 'Fichier introuvable'], closeGenericDialog: true, tasksPanel: true, mediaView: true, mediaViewName: 'MediaID' };
+    var SETTINGS = /*JELLYUSB_SETTINGS*/null || { headers: ['Support absent', 'Fichier introuvable'], closeGenericDialog: true, tasksPanel: true, mediaView: true, mediaViewName: 'MediaID', mediaButton: true, mediaButtonName: 'Media' };
     var OURS = SETTINGS.headers.filter(Boolean).map(function (h) { return h.trim(); });
     var WINDOW_MS = 6000;
 
@@ -230,7 +231,8 @@
     }
 
     function backgroundUrl(mediaId) {
-        return window.ApiClient.getUrl('JellyUsb/Media/' + encodeURIComponent(mediaId) + '/Background');
+        // the version in the address: a new release redraws the backgrounds instead of the cached ones
+        return window.ApiClient.getUrl('JellyUsb/Media/' + encodeURIComponent(mediaId) + '/Background', { v: SETTINGS.version || '1' });
     }
 
     function addStyle() {
@@ -487,6 +489,105 @@
         setInterval(ensureMediaView, 500);
         window.addEventListener('hashchange', function () { setTimeout(ensureMediaView, 0); });
         new MutationObserver(ensureMenuItem).observe(document.body, { childList: true, subtree: true });
+    }
+
+    /* ---------- 4. "Media" button in the header ---------- */
+    var BUTTON_ID = 'jellyusbHeaderButton';
+    // 2.5" disk: enclosure, platter (with spindle), activity LED and port; same 24x24 grid as the Material icons.
+    var DISK_PATH = 'M7 2h10a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3z'
+        + 'M12 4.5a5 5 0 1 0 0 10a5 5 0 1 0 0-10z'
+        + 'M12 8.3a1.2 1.2 0 1 0 0 2.4a1.2 1.2 0 1 0 0-2.4z'
+        + 'M7.2 17.4h3.6v1.6H7.2z'
+        + 'M14.2 17.2h2.6v2h-2.6z';
+    var headerLibrary = { userId: null, at: 0, id: null, pending: false };
+
+    function findMediaLibrary() {
+        var userId = window.ApiClient && window.ApiClient.getCurrentUserId && window.ApiClient.getCurrentUserId();
+        if (!userId) { return; }
+        if (headerLibrary.pending || (headerLibrary.userId === userId && Date.now() - headerLibrary.at < 300000)) { return; }
+        headerLibrary.pending = true;
+        window.ApiClient.getJSON(window.ApiClient.getUrl('UserViews', { userId: userId })).then(function (views) {
+            var movies = ((views && views.Items) || []).filter(function (v) { return v.CollectionType === 'movies'; });
+            // the first movie library that has USB media
+            return movies.reduce(function (chain, lib) {
+                return chain.then(function (found) {
+                    return found || getMedia(lib.Id).then(function (list) { return list.length ? lib.Id : null; });
+                });
+            }, Promise.resolve(null));
+        }).then(function (id) {
+            headerLibrary = { userId: userId, at: Date.now(), id: id, pending: false };
+        }, function () {
+            headerLibrary = { userId: userId, at: Date.now(), id: null, pending: false };
+        });
+    }
+
+    function navButtons(container) {
+        return Array.prototype.filter.call(container.children, function (el) {
+            return el.tagName === 'A' && el.id !== BUTTON_ID && /^#\/(home\?tab=1|movies|tv|music|list|livetv|collections|books|homevideos|musicvideos|photos)/.test(el.getAttribute('href') || '');
+        });
+    }
+
+    function ensureHeaderButton() {
+        // the header only: the side menu has a "Favorites" link too, with another layout
+        var fav = document.querySelector('header a[href="#/home?tab=1"]');
+        var existing = document.getElementById(BUTTON_ID);
+        if (existing && !existing.closest('header')) { existing.remove(); existing = null; }
+        if (!fav || !fav.parentElement) { if (existing) { existing.remove(); } return; }
+        findMediaLibrary();
+        var container = fav.parentElement;
+        var buttons = navButtons(container);
+        if (!headerLibrary.id) { if (existing) { existing.remove(); } return; }
+
+        var button = existing;
+        if (!button) {
+            var template = buttons[buttons.length - 1] || fav;
+            button = template.cloneNode(true);
+            button.id = BUTTON_ID;
+            button.removeAttribute('aria-current');
+            var svg = button.querySelector('svg');
+            if (svg) {
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('data-testid', 'JellyUsbDiskIcon');
+                svg.innerHTML = '<path fill-rule="evenodd" d="' + DISK_PATH + '"></path>';
+            }
+            // the label is the button's last text node
+            Array.prototype.slice.call(button.childNodes).forEach(function (n) { if (n.nodeType === 3) { n.remove(); } });
+            button.appendChild(document.createTextNode(SETTINGS.mediaButtonName || 'Media'));
+        }
+        var href = '#/movies?topParentId=' + encodeURIComponent(headerLibrary.id) + '&collectionType=movies&jellyusb=media';
+        if (button.getAttribute('href') !== href) { button.setAttribute('href', href); }
+
+        // right after the last library button (before the overflow "more" button, if any)
+        var last = buttons[buttons.length - 1] || fav;
+        if (button.previousElementSibling !== last || button.parentElement !== container) {
+            last.insertAdjacentElement('afterend', button);
+        }
+
+        // active look: the one jellyfin-web gives the current library (blue); that library looks inactive meanwhile
+        var inView = hashParams().params.get('jellyusb') === 'media';
+        var inactive = buttons.filter(function (b) { return /MuiButton-colorInherit/.test(b.className); })[0];
+        var active = buttons.filter(function (b) { return /MuiButton-colorPrimary/.test(b.className); })[0];
+        var inactiveCls = inactive ? (inactive.getAttribute('data-jusb-cls') || inactive.className) : null;
+        if (inView) {
+            if (active && !active.hasAttribute('data-jusb-cls') && inactiveCls) {
+                button.className = active.className;
+                active.setAttribute('data-jusb-cls', active.className);
+                active.className = inactiveCls;
+            }
+            button.setAttribute('aria-current', 'page');
+        } else {
+            Array.prototype.forEach.call(container.querySelectorAll('[data-jusb-cls]'), function (b) {
+                b.className = b.getAttribute('data-jusb-cls');
+                b.removeAttribute('data-jusb-cls');
+            });
+            if (inactiveCls && button.className !== inactiveCls) { button.className = inactiveCls; }
+            button.removeAttribute('aria-current');
+        }
+    }
+
+    if (SETTINGS.mediaView && SETTINGS.mediaButton) {
+        setInterval(ensureHeaderButton, 500);
+        window.addEventListener('hashchange', function () { setTimeout(ensureHeaderButton, 50); });
     }
 })();
 

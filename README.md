@@ -120,8 +120,12 @@ le script se désactive dans la page de configuration.
 
 ## Vue « MediaID » d'une bibliothèque de films
 
-Dans l'interface web, ouvrez une bibliothèque de films et choisissez **MediaID** dans le menu en haut
-à gauche.
+Dans l'interface web, deux accès :
+- le bouton **Media** du bandeau du haut, après les bibliothèques (Favoris, Films, Collections…), avec
+  une icône de disque dur. Il ouvre la vue de la première bibliothèque de films qui a des supports USB,
+  et s'affiche en bleu, comme le bouton d'une bibliothèque ouverte, tant qu'on est dans la vue. Il n'y
+  a pas de bandeau sur téléphone ni sur tablette : utilisez alors le second accès ;
+- dans une bibliothèque de films, l'entrée **MediaID** du menu en haut à gauche.
 - **Une ligne par support** (MOVIES00, MOVIES01…), comme les lignes des Suggestions. Chaque ligne
   donne le nombre de films et l'état du support (**branché** ou **absent**), puis montre l'image de fond du
   support et ses derniers films ajoutés. Les affiches d'un support absent sont grisées.
@@ -162,6 +166,7 @@ JellyUSB**. Elle reprend la fiche de l'extension :
 | Délais web / Android TV | 300 / 300 ms | Pour que notre message arrive après la fenêtre ou le toast d'erreur de l'application |
 | Script de l'interface web | oui | Fermeture de la fenêtre générique, panneau des tâches et vue MediaID (désactivables séparément) |
 | Nom de la vue par MediaID | `MediaID` | Texte affiché dans le menu des vues |
+| Bouton du bandeau | oui, `Media` | Ajoute le bouton qui ouvre la vue par MediaID, et règle son nom |
 | Lire les NFO non UTF‑8 en Windows‑1252 | oui | Lecteur « JellyUSB NFO », placé automatiquement avant « Nfo » |
 | Réparer les textes à l'import | oui | Titres, titre original, résumé, slogan, genres, studios, tags, chapitres, pistes |
 | Compléter depuis TheMovieDb | oui | Si ni le NFO ni le titre original ne donnent la lettre, la tâche demande le titre à TheMovieDb (par identifiant) et ne comble les « � » que s'il correspond partout ailleurs |

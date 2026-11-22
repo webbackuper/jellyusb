@@ -77,6 +77,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets the name of that view in the menu.</summary>
     public string WebMediaViewName { get; set; } = "MediaID";
 
+    /// <summary>Gets or sets a value indicating whether a button in the header opens the view by MediaID.</summary>
+    public bool WebMediaButton { get; set; } = true;
+
+    /// <summary>Gets or sets the label of that button.</summary>
+    public string WebMediaButtonName { get; set; } = "Media";
+
     /// <summary>Gets or sets the delay before sending the message to Android TV, so it shows after the error toast.</summary>
     public int AndroidTvMessageDelayMs { get; set; } = 300;
 
